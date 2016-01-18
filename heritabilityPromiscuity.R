@@ -80,18 +80,20 @@ str(fixedsparrowped)}
 # at the moment, I will not be doing this in this script.
 
 # The same can be done with the ASReml-R ready version of the pedigree:
-{asrped <- sparrowpedigree[,5:7]
-head(asrped)
-tail(asrped)
+{
+  asrped <- sparrowpedigree[,5:7]
+  head(asrped)
+  tail(asrped)
 
-# fix the pedigree (missing sires and dams are inserted at the top of the file)
-fixedasrped <- fixPedigree(asrped)
+  # fix the pedigree (missing sires and dams are inserted at the top of the file)
+  fixedasrped <- fixPedigree(asrped)
 
-head(fixedasrped)
-tail(fixedasrped)
+  head(fixedasrped)
+  tail(fixedasrped)
 
-summary(fixedasrped)
-str(fixedasrped)}
+  summary(fixedasrped)
+  str(fixedasrped)
+}
 
 ##############################################################################
 # loading the Lundy House Sparrow Database
@@ -126,6 +128,9 @@ sqlTables(sparrowDB)
 # database called DataBaseV0.74-updated20150320-AlfredoCheckedMarch2015
 # of all the birds associated with a brood, their cohorts,
 # their broods, their parents.
+# This was called birdbroodcohortparent-to2014-20150910.txt
+# and now I am directly calling the database to extract the
+# same data instead.
 
 # This means that my measure of EPO and WPO totals is only
 # based on these offspring and all the offspring that are
@@ -135,15 +140,100 @@ sqlTables(sparrowDB)
 # how to make the data and use the sparrow data set for an analysis
 # of this.
 
-usys_qbirdbroodcohortparent <- sqlQuery (sparrowDB, 
-                                        "SELECT tblBirdID.BirdID, tblBirdID.Cohort, tblBirdID.BroodRef, tblBroods.BroodName, tblBroods.NestboxRef, tblBroods.SocialDadID, tblBroods.SocialDadCertain, tblBroods.SocialMumID, tblBroods.SocialMumCertain
-                                        FROM tblBroods 
-                                        INNER JOIN tblBirdID 
-                                        ON tblBroods.BroodRef = tblBirdID.BroodRef;")
+offspring <- sqlQuery (sparrowDB,
+                      "SELECT tblBirdID.BirdID, 
+                              tblBirdID.Cohort,
+                              tblBirdID.BroodRef, 
+                              tblBroods.BroodName, 
+                              tblBroods.NestboxRef, 
+                              tblBroods.SocialDadID, 
+                              tblBroods.SocialDadCertain, 
+                              tblBroods.SocialMumID, 
+                              tblBroods.SocialMumCertain
+                      FROM tblBroods 
+                      INNER JOIN tblBirdID 
+                      ON tblBroods.BroodRef = tblBirdID.BroodRef;",
+                      na.strings="NA")
 
-head(usys_qbirdbroodcohortparent)
-tail(usys_qbirdbroodcohortparent)
-str(usys_qbirdbroodcohortparent)
+head(offspring)
+tail(offspring)
+str(offspring)
+summary(offspring)
+
+# In how many cases do I know no parents versus both?
+table(offspring$SocialDadCertain,
+      offspring$SocialMumCertain)
+
+
+# In 6433 cases out of 7628 I know both. That presumably includes
+# cases where the parent was not known, rather than not certain
+
+which(is.na(offspring$SocialDadID))
+which(offspring$SocialDadCertain==0)
+
+# Quick visual inspection shows a lot of shared rows.
+
+
+
+#-------------------------------------------
+# Add genetic parentage to offspring data
+#-------------------------------------------
+
+
+# This ensures that offspring with genetic AND social fathers can
+# be assigned a status as extra-pair offspring or within-pair (EPO or WPO):
+
+offspring$GeneticDadID <- sparrowped$sire[match(offspring$BirdID, 
+                                                sparrowped$birdid)]
+
+offspring$GeneticMumID <- sparrowped$dam[match(offspring$BirdID,
+                                               sparrowped$birdid)]
+
+head(offspring)
+tail(offspring)
+
+# Any missing years of genetic parents indicate the end of the pedigree.
+# i.e. at the time of writing (20160118) the pedigree goes to 2013, and
+# all offspring from 2014 and 2015 do not have genetic parents.
+
+summary(offspring)
+
+
+# where parentage is missing for the genetic male or the social male,
+# we do not know whether an offspring is EPO or WPO. Therefore we 
+# must remove these cases from the data set:
+
+offspring2 <- offspring[-which(is.na(offspring$SocialDadID)),]
+offspring3 <- offspring2[-which(is.na(offspring2$GeneticDadID)),]
+
+# how much data was lost at each step:
+length(offspring[,1])
+length(offspring2[,1])
+length(offspring3[,1])
+
+# how many social fathers and genetic fathers are there?
+length(unique(offspring3$SocialDadID))
+length(unique(offspring3$GeneticDadID))
+
+
+#-------------------------------------------
+# Designate offspring as EPO or WPO
+#-------------------------------------------
+
+# WPO have the same social and genetic sire,
+# EPO have different genetic and social sires.
+
+offspring3$WPO <- ifelse(offspring3$SocialDadID==offspring3$GeneticDadID,
+                         1, 0)
+head(offspring3)
+tail(offspring3)
+
+offspring3$EPO <- ifelse(offspring3$SocialDadID!=offspring3$GeneticDadID,
+                         1, 0)
+
+table(offspring3$EPO, offspring3$WPO)
+
+# 856 EPO. 4011 WPO. None identified as both. Good!
 
 ##############################################################################
 # Additional consideration 1: exclude birds that are still alive
@@ -152,6 +242,15 @@ str(usys_qbirdbroodcohortparent)
 # The consideration is that birds that are still alive are still 
 # having EPO and WPO, so our phenotype is not completely accurate.
 # What happens to the analysis without these birds?
+
+##############################################################################
+# Additional consideration 2: exclude birds that are not certain social parents
+##############################################################################
+
+# When we have imperfect sightings information in the field and/or infer
+# social parentage later using the sightings and the genetic information,
+# we tick 0 for 'SocialDadCertain' or 'SocialMumCertain' so that the parent
+# can be marked as less reliable.
 
 ##############################################################################
 # Close the database
