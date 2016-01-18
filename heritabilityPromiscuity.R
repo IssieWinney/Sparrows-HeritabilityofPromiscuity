@@ -140,6 +140,10 @@ sqlTables(sparrowDB)
 # how to make the data and use the sparrow data set for an analysis
 # of this.
 
+#-------------------------------------------
+# Load offspring data from database
+#-------------------------------------------
+{
 offspring <- sqlQuery (sparrowDB,
                       "SELECT tblBirdID.BirdID, 
                               tblBirdID.Cohort,
@@ -172,13 +176,12 @@ which(is.na(offspring$SocialDadID))
 which(offspring$SocialDadCertain==0)
 
 # Quick visual inspection shows a lot of shared rows.
-
-
+}
 
 #-------------------------------------------
 # Add genetic parentage to offspring data
 #-------------------------------------------
-
+{
 
 # This ensures that offspring with genetic AND social fathers can
 # be assigned a status as extra-pair offspring or within-pair (EPO or WPO):
@@ -214,12 +217,12 @@ length(offspring3[,1])
 # how many social fathers and genetic fathers are there?
 length(unique(offspring3$SocialDadID))
 length(unique(offspring3$GeneticDadID))
-
+}
 
 #-------------------------------------------
 # Designate offspring as EPO or WPO
 #-------------------------------------------
-
+{
 # WPO have the same social and genetic sire,
 # EPO have different genetic and social sires.
 
@@ -234,6 +237,67 @@ offspring3$EPO <- ifelse(offspring3$SocialDadID!=offspring3$GeneticDadID,
 table(offspring3$EPO, offspring3$WPO)
 
 # 856 EPO. 4011 WPO. None identified as both. Good!
+}
+
+##############################################################################
+# male phenotypes
+##############################################################################
+
+# Now aggregate the data in to a phenotype for each male.
+# Create a list of all GENETIC FATHERS in the data set and 
+# the number of EPO and WPO that each father sires.
+# This means that males that sire no offspring are NOT in 
+# this data set
+
+{
+  # make a list of unique males and count the number of WPO per male
+  malephenotypes <- aggregate(offspring3$WPO, 
+                              list(offspring3$GeneticDadID),
+                              FUN=sum)
+  head(malephenotypes)
+  
+  # now the number of EPO per male
+  maleEPO <- aggregate(offspring3$EPO, 
+                       list(offspring3$GeneticDadID),
+                       FUN=sum)
+  head(maleEPO)
+  
+  # add sensible names to the main data frame
+  names(malephenotypes) <- c("animal", "WPO")
+  head(malephenotypes)
+  
+  str(malephenotypes)
+  str(maleEPO)
+  
+  # and put the two data frames together
+  malephenotypes <- cbind(malephenotypes, maleEPO)
+  
+  head(malephenotypes)
+  
+  # check that all data points have the same male from the WPO
+  # as EPO data set
+  malephenotypes$animal==malephenotypes$Group.1
+    
+  # and that no males are different
+  malephenotypes$animal!=malephenotypes$Group.1
+  }
+    
+  # good!
+  
+  # rename the data set with names that are useful later:
+  names(malephenotypes) <- c("animal", "WPO", "maleID", "EPO")
+  head(malephenotypes)
+    
+  
+  # are any males in my file not in the pedigree?
+  check1 <- fixedsparrowped$id[match(malephenotypes$animal,
+                                  fixedsparrowped$id)]
+  
+  summary(check1)
+  check1
+  # wooo! So, no NA's means that all males are in the pedigree.
+}
+
 
 ##############################################################################
 # Additional consideration 1: exclude birds that are still alive
