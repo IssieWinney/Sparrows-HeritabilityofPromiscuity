@@ -53,3 +53,19 @@ sparrowpedigree[length(sparrowpedigree[,1])+1,] <- c(7649, NA, NA, 2013, 6072, N
 
 head(sparrowpedigree)
 tail(sparrowpedigree)
+
+##############################################################################
+# Metadata
+##############################################################################
+
+# birdid      the numerical identity of the bird, the same as the numerical ID
+#             in the database (BirdID)
+# dam         the genetic mother as assigned by microsatellite data (ID is her 
+#             BirdID in the database)
+# sire        the genetic father as assigned by microsatellite data (ID is his 
+#             BirdID in the database)
+# asrid       birdid but with birds numbered (nearly) consecutively. This is here for
+#             analyses with ASReml-R which used to complain that BirdID had 
+#             numbers missing from the sequence
+# asrdam      genetic mother where her ID is her asrid
+# asrsire     genetic father where his ID is his asrid
