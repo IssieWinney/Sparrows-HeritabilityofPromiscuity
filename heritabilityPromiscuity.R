@@ -395,6 +395,54 @@ table(offspring3$EPO, offspring3$WPO)
   str(malephenotypes)
 }
 
+{
+  # male lifespan. Lifespan can be defined in many ways:
+  # last time as a social parent, last time seen in the genetic pedigree,
+  # last time captured, last time sighted. The pedigree has a 'last seen 
+  # alive' query that takes all of this information and integrates it to
+  # give the most recent and most likely date seen alive.
+  
+  # the current database does not contain the most recent pedigree.
+  # for now, for the purposes of this analysis, the last date seen
+  # alive will be defined as the last time seen in the GENETIC PEDIGREE.
+  
+  # so, find the maximum cohort for a given sire in the pedigree:
+  malelifespan <- aggregate(sparrowpedigree$cohort, 
+                           list(sparrowpedigree$sire),
+                           FUN=max)
+  
+  head(malelifespan)
+  str(malelifespan)
+  
+  # match to the data frame:
+  malephenotypes$lastyearPED <- malelifespan$x[match(malephenotypes$animal,
+                                                     malelifespan$Group.1)]
+  
+  head(malephenotypes)
+  
+  # make lifespan variable by subtracting cohort from year last seen:
+  malephenotypes$lifespanPED <- malephenotypes$lastyearPED - malephenotypes$Cohort
+  summary(malephenotypes$lifespanPED)
+  table(malephenotypes$lifespanPED)
+  # one male reproduced in year zero...
+  
+  # make spare age variable:
+  malephenotypes$lifespanPED6 <- malephenotypes$lifespanPED
+  
+  # assign >6 years old to 6 years old for sample size by finding the
+  # >6 data points and replacing them with a 6:
+  malephenotypes$lifespanPED6[which(malephenotypes$lifespanPED6>6)] <- 6
+  
+  # and assign the zero year old to be one:
+  malephenotypes$lifespanPED6[which(malephenotypes$lifespanPED6==0)] <- 1
+  
+  # check
+  summary(malephenotypes$lifespanPED6)
+  table(malephenotypes$lifespanPED6)
+  table(malephenotypes$lifespanPED)
+  # numbers correct.
+}
+
 #-------------------------------------------
 # Male dataset of genetic offspring per year
 #-------------------------------------------
@@ -484,9 +532,45 @@ table(offspring3$EPO, offspring3$WPO)
   # set appropriate factors for analysis
   str(maleyear)
   maleyear$factoranimal <- as.factor(maleyear$animal)
+  maleyear$factormaleID <- as.factor(maleyear$animal)
   maleyear$factormaternalID <- as.factor(maleyear$maternalID)
   maleyear$factorpaternalID <- as.factor(maleyear$paternalID)
   maleyear$factorcohort <- as.factor(maleyear$Cohort)
+  maleyear$factoryear <- as.factor(maleyear$year)
+  str(maleyear)
+}
+
+{
+  # male age. Unlike with lifespan, age is easier to define as the
+  # year breeding occurred minus the cohort of the male.
+  
+  # add the year breeding occurred to the data set:
+  maleyear$year <- offspring3$Cohort[match(maleyear$maleyear, 
+                                           offspring3$maleyear)]
+  
+  head(maleyear)
+  tail(maleyear)
+  str(maleyear)
+  
+  # and calculate age by subtracting cohort from year breeding occurred:
+  maleyear$age <- maleyear$year - maleyear$Cohort
+  
+  head(maleyear)
+  table(maleyear$age)
+  
+  # as with lifespan, there will be problems analysing the males >6
+  # years old because of sample size:
+  
+  maleyear$age6 <- maleyear$age
+  maleyear$age6[which(maleyear$age6>6)] <- 6
+  
+  # and the male reproducing in year zero is a database problem:
+  maleyear$age6[which(maleyear$age6==0)] <- 1
+  
+  table(maleyear$age)
+  table(maleyear$age6)
+  # looks good for analysis
+  
   str(maleyear)
 }
 
@@ -527,7 +611,7 @@ table(offspring3$EPO, offspring3$WPO)
 ##############################################################################
 # Plots of variables
 ##############################################################################
-
+{
 # how many EPO offspring do males have?
 hist(malephenotypes$EPO, breaks=seq(-1,26,1))
 # lots of zeroes.
@@ -539,7 +623,7 @@ hist(malephenotypes$EPO/(malephenotypes$EPO+malephenotypes$WPO))
 # in the per year data?
 hist(maleyear$EPO, breaks=seq(-1,16,1))
 hist(maleyear$EPO/(maleyear$EPO+maleyear$WPO))
-
+}
 ##############################################################################
 # Priors
 ##############################################################################
@@ -557,6 +641,21 @@ hist(maleyear$EPO/(maleyear$EPO+maleyear$WPO))
                           G2=list(V = 1, nu = 1, alpha.mu = 0, alpha.V = 1000),
                           G3=list(V = 1, nu = 1, alpha.mu = 0, alpha.V = 1000),
                           G4=list(V = 1, nu = 1, alpha.mu = 0, alpha.V = 1000)))
+  
+  prior5G.p = list(R=list(V=1,nu=0.002),
+                   G=list(G1=list(V = 1, nu = 1, alpha.mu = 0, alpha.V = 1000),
+                          G2=list(V = 1, nu = 1, alpha.mu = 0, alpha.V = 1000),
+                          G3=list(V = 1, nu = 1, alpha.mu = 0, alpha.V = 1000),
+                          G4=list(V = 1, nu = 1, alpha.mu = 0, alpha.V = 1000),
+                          G5=list(V = 1, nu = 1, alpha.mu = 0, alpha.V = 1000)))
+  
+  prior6G.p = list(R=list(V=1,nu=0.002),
+                   G=list(G1=list(V = 1, nu = 1, alpha.mu = 0, alpha.V = 1000),
+                          G2=list(V = 1, nu = 1, alpha.mu = 0, alpha.V = 1000),
+                          G3=list(V = 1, nu = 1, alpha.mu = 0, alpha.V = 1000),
+                          G4=list(V = 1, nu = 1, alpha.mu = 0, alpha.V = 1000),
+                          G5=list(V = 1, nu = 1, alpha.mu = 0, alpha.V = 1000),
+                          G6=list(V = 1, nu = 1, alpha.mu = 0, alpha.V = 1000)))
 }
 
 ##############################################################################
@@ -577,7 +676,7 @@ hist(maleyear$EPO/(maleyear$EPO+maleyear$WPO))
 }
 
 ##############################################################################
-# Heritability
+# Heritability of male behaviour
 ##############################################################################
 
 # a model of heritability should have as a minimum the ID of the bird (if there
@@ -588,6 +687,7 @@ hist(maleyear$EPO/(maleyear$EPO+maleyear$WPO))
 # Lifetime male behaviour as a multinomial variable
 #-------------------------------------------
 
+# with pedigree term, maternal ID, and male cohort
 {
   maleh2EPO.multinomial.lifetime <- MCMCglmm(cbind(EPO, WPO)~1,
                                ~factoranimal + factormaternalID + factorcohort,
@@ -604,6 +704,31 @@ hist(maleyear$EPO/(maleyear$EPO+maleyear$WPO))
   autocorr(maleh2EPO.multinomial.lifetime$Sol)
   autocorr(maleh2EPO.multinomial.lifetime$VCV)
   # animal:animal is a little high - this needs to be run for longer
+}
+
+# also accounting for male lifespan as a fixed factor between 1 and 6:
+{
+  maleh2EPO.multinomial.lifetime.lifespan <- MCMCglmm(cbind(EPO, WPO)~factor(lifespanPED6),
+                                             ~factoranimal + factormaternalID + factorcohort,
+                                             ginverse=list(factoranimal=invped.malelifetime),
+                                             prior=prior3G.p,
+                                             data=malephenotypes,
+                                             family="multinomial2",
+                                             nitt=1000000,
+                                             thin=800,
+                                             burnin=200000)
+  
+  plot(maleh2EPO.multinomial.lifetime.lifespan)
+  # clearer cohort effects. Suggestion that two and three year olds
+  # have fewer EPO than one year olds and one years are similar to 
+  # four and more year olds in proportion of EPO. Perhaps this is because
+  # Perhaps this is because we miss the WPO of some males and only detect
+  # their existence through EPO, so this multinomial approach is not
+  # ideal for males where WPO are not guaranteed.
+  
+  autocorr(maleh2EPO.multinomial.lifetime.lifespan$Sol)
+  autocorr(maleh2EPO.multinomial.lifetime.lifespan$VCV)
+  # autocorrelation good!
 }
 
 # additional consideration: whether incidental assortative mating by promiscuity
@@ -628,6 +753,8 @@ hist(maleyear$EPO/(maleyear$EPO+maleyear$WPO))
   # an assortative mating thing. Cohort effects are clearer now.
 }
 
+# paternal ID and lifespan...
+
 #-------------------------------------------
 # Lifetime male behaviour as a poisson variable
 #-------------------------------------------
@@ -651,6 +778,28 @@ hist(maleyear$EPO/(maleyear$EPO+maleyear$WPO))
   # all fine enough.
 }
 
+# also accounting for male lifespan as a fixed factor between 1 and 6:
+{
+  maleh2EPO.poisson.lifetime.lifespan <- MCMCglmm(EPO~factor(lifespanPED6),
+                                         ~factoranimal + factormaternalID + factorcohort,
+                                         ginverse=list(factoranimal=invped.malelifetime),
+                                         prior=prior3G.p,
+                                         data=malephenotypes,
+                                         family="poisson",
+                                         nitt=1000000,
+                                         thin=800,
+                                         burnin=200000)
+  
+  plot(maleh2EPO.poisson.lifetime.lifespan)
+  # YES! See how now the distribution is a poisson and therefore unbounded by
+  # a male's WPO, the number of EPO increases in older males.
+  # As before, maternal effects are strongest in this model.
+  
+  autocorr(maleh2EPO.poisson.lifetime.lifespan$Sol)
+  autocorr(maleh2EPO.poisson.lifetime.lifespan$VCV)
+  # looks good.
+}
+
 # with paternal ID included:
 
 {
@@ -672,8 +821,225 @@ hist(maleyear$EPO/(maleyear$EPO+maleyear$WPO))
   # again, good sampling.
 }
 
+# and paternal ID with lifespan:
+{
+  maleh2EPO.poisson.lifetime.lifespan.patID <- MCMCglmm(EPO~factor(lifespanPED6),
+                                                  ~factoranimal + factormaternalID +
+                                                    factorpaternalID + factorcohort,
+                                                  ginverse=list(factoranimal=invped.malelifetime),
+                                                  prior=prior4G.p,
+                                                  data=malephenotypes,
+                                                  family="poisson",
+                                                  nitt=1000000,
+                                                  thin=800,
+                                                  burnin=200000)
+  
+  plot(maleh2EPO.poisson.lifetime.lifespan.patID)
+  # again, maternal ID matters out of all these random effects.
+  # EPO goes up with lifespan.
+  autocorr(maleh2EPO.poisson.lifetime.lifespan.patID$Sol)
+  autocorr(maleh2EPO.poisson.lifetime.lifespan.patID$VCV)
+  # fine
+}
+
 # problems with these models: males that are older can contribute more
-# EPO. Male lifespan would need to go in a lifetime model.
+# EPO. A per-year approach is preferable.
+
+#-------------------------------------------
+# Per year male behaviour as a multinomial variable
+#-------------------------------------------
+
+
+# with bird ID term, pedigree term, maternal ID, and male cohort
+{
+  maleh2EPO.multi.yr <- MCMCglmm(cbind(EPO, WPO)~1,
+                                 ~factoranimal + factormaleID +
+                                   factormaternalID + factorcohort,
+                                 ginverse=list(factoranimal=invped.malelifetime),
+                                 prior=prior4G.p,
+                                 data=maleyear,
+                                 family="multinomial2",
+                                 nitt=1000000,
+                                 thin=800,
+                                 burnin=200000)
+  plot(maleh2EPO.multi.yr)
+  # This one struggles to estimate anything.
+  autocorr(maleh2EPO.multi.yr$Sol)
+  autocorr(maleh2EPO.multi.yr$VCV)
+  # and not because there is autocorrelation
+}
+
+# with age as a fixed factor between 1 and 6
+{
+  maleh2EPO.multi.yr.age <- MCMCglmm(cbind(EPO, WPO)~factor(age6),
+                                 ~factoranimal + factormaleID +
+                                   factormaternalID + factorcohort,
+                                 ginverse=list(factoranimal=invped.malelifetime),
+                                 prior=prior4G.p,
+                                 data=maleyear,
+                                 family="multinomial2",
+                                 nitt=1000000,
+                                 thin=800,
+                                 burnin=200000)
+  plot(maleh2EPO.multi.yr.age)
+  # Once age is accounted for, there is a clear cohort effect but not much more.
+  autocorr(maleh2EPO.multi.yr.age$Sol)
+  autocorr(maleh2EPO.multi.yr.age$VCV)
+  # That will do
+}
+
+# with paternalID
+{
+  maleh2EPO.multi.yr.pat <- MCMCglmm(cbind(EPO, WPO)~1,
+                                         ~factoranimal + factormaleID +
+                                           factormaternalID + factorpaternalID +
+                                           factorcohort,
+                                         ginverse=list(factoranimal=invped.malelifetime),
+                                         prior=prior5G.p,
+                                         data=maleyear,
+                                         family="multinomial2",
+                                         nitt=1000000,
+                                         thin=800,
+                                         burnin=200000)
+  plot(maleh2EPO.multi.yr.pat)
+  # even less going on than before (though no male age in this model)
+  autocorr(maleh2EPO.multi.yr.pat$Sol)
+  autocorr(maleh2EPO.multi.yr.pat$VCV)
+  # This looks fine but I think the chain behaviour is a little wobbly
+}
+
+# with paternalID and age
+{
+  maleh2EPO.multi.yr.pat.age <- MCMCglmm(cbind(EPO, WPO)~factor(age6),
+                                     ~factoranimal + factormaleID +
+                                       factormaternalID + factorpaternalID +
+                                       factorcohort,
+                                     ginverse=list(factoranimal=invped.malelifetime),
+                                     prior=prior5G.p,
+                                     data=maleyear,
+                                     family="multinomial2",
+                                     nitt=1000000,
+                                     thin=800,
+                                     burnin=200000)
+  plot(maleh2EPO.multi.yr.pat.age)
+  # Hum! A small amount of variance to the paternal ID here where before there
+  # was none! Cohort is stronger. No effect is significant. So this means the
+  # maternal effect on this trait breaks down / is harder to quantify in this data.
+  autocorr(maleh2EPO.multi.yr.pat.age$Sol)
+  autocorr(maleh2EPO.multi.yr.pat.age$VCV)
+  # good.
+}
+
+# with year of breeding as a random effect, paternal ID, and age
+{
+  maleh2EPO.multi.yr.pat.age.year <- MCMCglmm(cbind(EPO, WPO)~factor(age6),
+                                         ~factoranimal + factormaleID +
+                                           factormaternalID + factorpaternalID +
+                                           factorcohort + factoryear,
+                                         ginverse=list(factoranimal=invped.malelifetime),
+                                         prior=prior6G.p,
+                                         data=maleyear,
+                                         family="multinomial2",
+                                         nitt=1000000,
+                                         thin=800,
+                                         burnin=200000)
+  plot(maleh2EPO.multi.yr.pat.age.year)
+  # 
+  autocorr(maleh2EPO.multi.yr.pat.age.year$Sol)
+  autocorr(maleh2EPO.multi.yr.pat.age.year$VCV)
+  # good.
+}
+
+#-------------------------------------------
+# Per year male behaviour as a poisson variable
+#-------------------------------------------
+
+# with bird ID term, pedigree term, maternal ID, and male cohort
+{
+  maleh2EPO.pois.yr <- MCMCglmm(EPO~1,
+                                 ~factoranimal + factormaleID +
+                                   factormaternalID + factorcohort,
+                                 ginverse=list(factoranimal=invped.malelifetime),
+                                 prior=prior4G.p,
+                                 data=maleyear,
+                                 family="poisson",
+                                 nitt=1000000,
+                                 thin=800,
+                                 burnin=200000)
+  
+  plot(maleh2EPO.pois.yr)
+  # as before, maternal ID is estimated where the other factors, including
+  # cohort, are not.
+  autocorr(maleh2EPO.pois.yr$Sol)
+  autocorr(maleh2EPO.pois.yr$VCV)
+  # fine.
+}
+
+# with age as a fixed factor between 1 and 6
+{
+  maleh2EPO.pois.yr.age <- MCMCglmm(EPO~factor(age6),
+                                     ~factoranimal + factormaleID +
+                                       factormaternalID + factorcohort,
+                                     ginverse=list(factoranimal=invped.malelifetime),
+                                     prior=prior4G.p,
+                                     data=maleyear,
+                                     family="poisson",
+                                     nitt=1000000,
+                                     thin=800,
+                                     burnin=200000)
+  plot(maleh2EPO.pois.yr.age)
+  # again, age important but out of the random effects only mother is 
+  # strong.
+  autocorr(maleh2EPO.pois.yr.age$Sol)
+  autocorr(maleh2EPO.pois.yr.age$VCV)
+  # units:animal has a strong one. Should run for longer. Might be random.
+}
+
+# with paternalID
+{
+  maleh2EPO.pois.yr.pat <- MCMCglmm(EPO~1,
+                                    ~factoranimal + factormaleID +
+                                      factormaternalID + factorpaternalID +
+                                      factorcohort,
+                                    ginverse=list(factoranimal=invped.malelifetime),
+                                    prior=prior5G.p,
+                                    data=maleyear,
+                                    family="poisson",
+                                    nitt=1000000,
+                                    thin=800,
+                                    burnin=200000)
+}
+
+# with paternalID and age
+{
+  maleh2EPO.pois.yr.age.pat <- MCMCglmm(EPO~factor(age6),
+                                        ~factoranimal + factormaleID +
+                                          factormaternalID + factorpaternalID +
+                                          factorcohort,
+                                        ginverse=list(factoranimal=invped.malelifetime),
+                                        prior=prior5G.p,
+                                        data=maleyear,
+                                        family="poisson",
+                                        nitt=1000000,
+                                        thin=800,
+                                        burnin=200000)
+}
+
+# with year of breeding as a random effect, paternal ID, and age
+{
+  maleh2EPO.pois.yr.age.pat.year <- MCMCglmm(EPO~factor(age6),
+                                        ~factoranimal + factormaleID +
+                                          factormaternalID + factorpaternalID +
+                                          factorcohort + factoryear,
+                                        ginverse=list(factoranimal=invped.malelifetime),
+                                        prior=prior6G.p,
+                                        data=maleyear,
+                                        family="poisson",
+                                        nitt=1000000,
+                                        thin=800,
+                                        burnin=200000)
+}
+
 
 ##############################################################################
 # Additional consideration 1: exclude birds that are still alive
