@@ -864,6 +864,153 @@ offspring4[which((offspring4$SocialMumID==offspring4$GeneticMumID)==FALSE),]
 }
 
 
+#-------------------------------------------
+# Female dataset of genetic offspring per brood
+#-------------------------------------------
+
+{
+  # per brood per female:
+  
+  broodWPO <- aggregate(offspring4$WPO,
+                        list(offspring4$BroodName),
+                        FUN=sum)
+  
+  broodEPO <- aggregate(offspring4$EPO,
+                        list(offspring4$BroodName),
+                        FUN=sum)
+  
+  summary(broodWPO)
+  summary(broodEPO)
+  str(broodWPO)
+  str(broodEPO)
+  table(broodEPO$x)
+  # some broods are completely or almost completely EPO
+  # (ones with four or five EPO). I wonder how many of
+  # these are misidentified parents.
+  
+  broodWE <- data.frame(BroodName=broodWPO$Group.1,
+                        WPO=broodWPO$x,
+                        EPO=broodEPO$x)
+  
+  summary(broodWE)
+  
+  hist(broodWE$EPO/(broodWE$EPO+broodWE$WPO))
+  # most broods have no EPO, so this might be a hard
+  # analysis to run.
+  
+  # how many are all EPO?
+  table(broodWE$WPO)
+  # 63
+  
+  # add female ID
+  broodWE$MumID <- offspring4$GeneticMumID[match(broodWE$BroodName,
+                                                        offspring4$BroodName)]
+  
+  # add the female's social partner.
+  broodWE$DadID <- offspring4$SocialDadID[match(broodWE$BroodName,
+                                                        offspring4$BroodName)]
+  
+  # year of reproduction
+  broodWE$year <- offspring4$Cohort[match(broodWE$BroodName,
+                                          offspring4$BroodName)]
+  
+  head(broodWE)
+  
+  
+  # check that this is all matching the original data:
+  broodWE[which(broodWE$BroodName=="J050"),]
+  offspring4[which(offspring4$BroodName=="J050"),]
+}
+
+{
+  # add maternal ID for maternal effects:
+  broodWE$maternalID <- fixedsparrowped$dam[match(broodWE$MumID,
+                                                     fixedsparrowped$animal)]
+  head(broodWE)
+  
+  # and paternal ID
+  broodWE$paternalID <- fixedsparrowped$sire[match(broodWE$MumID,
+                                                      fixedsparrowped$animal)]
+  
+  summary(broodWE)
+  
+  # check against original data:
+  broodWE[which(broodWE$BroodName=="J050"),]
+  sparrowpedigree[which(sparrowpedigree$birdid==4037),]
+}
+
+{
+  # Add the cohort of each female:
+  broodWE$Cohort <- birdcohort$Cohort[match(broodWE$MumID,
+                                               birdcohort$BirdID)]
+  
+  head(broodWE)
+  summary(broodWE)
+  
+  # check:
+  sparrowpedigree[which(sparrowpedigree$birdid==4739),]
+  broodWE[which(broodWE$MumID==4739),]
+  # good good.
+}
+
+{
+  # female age. Age is defined as the
+  # year breeding occurred minus the cohort of the female.
+  
+  str(broodWE)
+  
+  # calculate age by subtracting cohort from year breeding occurred:
+  broodWE$age <- broodWE$year - broodWE$Cohort
+  
+  head(broodWE)
+  table(broodWE$age)
+  
+  # merge ages >5
+  
+  broodWE$age5 <- broodWE$age
+  broodWE$age5[which(broodWE$age5>5)] <- 5
+  
+  table(broodWE$age)
+  table(broodWE$age5)
+  # looks good for analysis
+  
+  str(broodWE)
+}
+
+{
+  # set appropriate factors for analysis
+  str(broodWE)
+  broodWE$factoranimal <- as.factor(broodWE$MumID)
+  broodWE$factorfemaleID <- as.factor(broodWE$MumID)
+  broodWE$factormaternalID <- as.factor(broodWE$maternalID)
+  broodWE$factorpaternalID <- as.factor(broodWE$paternalID)
+  broodWE$factorcohort <- as.factor(broodWE$Cohort)
+  broodWE$factoryear <- as.factor(broodWE$year)
+  str(broodWE)
+}
+
+{  
+  # add the age of the social father:
+  
+  head(birdcohort)
+  
+  broodWE$socdadcohort <- birdcohort$Cohort[match(broodWE$DadID,
+                                                  birdcohort$BirdID)]
+  
+  broodWE$socdadage <- broodWE$year - broodWE$socdadcohort
+  
+  summary(broodWE)
+  table(broodWE$socdadage)
+  
+  # amalgamate >6
+  broodWE$dadage6 <- broodWE$socdadage
+  broodWE$dadage6[which(broodWE$dadage6>6)] <- 6
+  
+  # make the zero a one:
+  broodWE$dadage6[which(broodWE$dadage6==0)] <- 1
+  
+  table(broodWE$dadage6)
+}
 
 ##############################################################################
 # Pruning the pedigree
@@ -1028,22 +1175,18 @@ hist(maleyear$EPO/(maleyear$EPO+maleyear$WPO))
 }
 
 {
-  femaler2EPOpois <- MCMCglmm(EPO~1,
+  femaler2EPOmulti <- MCMCglmm(cbind(EPO,WPO)~1,
                             ~factorfemaleID,
                             prior=prior1G.p,
                             data=femaleyear,
-                            family="poisson",
+                            family="multinomial2",
                             nitt=1000000,
                             thin=800,
                             burnin=200000)
-  plot(femaler2EPOpois)
-  # females are strongly and clearly repeatable in this behaviour
-  # in contrast to males, which could be the case if males are
-  # opportunistic and females are choosy?
-  # note that low residual variance compared to males (though 
-  # repeatability in a poisson also depends on the intercept)
-  autocorr(femaler2EPOpois$Sol)
-  autocorr(femaler2EPOpois$VCV)
+  plot(femaler2EPOmulti)
+  # 
+  autocorr(femaler2EPOmulti$Sol)
+  autocorr(femaler2EPOmulti$VCV)
 }
 
 # as with males, include extra factors, but this time to see
@@ -1051,21 +1194,57 @@ hist(maleyear$EPO/(maleyear$EPO+maleyear$WPO))
 # effects:
 # female poisson with female age as fixed factor, and year:
 {
-  femaler2EPOpois.age.yr <- MCMCglmm(EPO~factor(age5),
+  femaler2EPOmulti.age.yr <- MCMCglmm(cbind(EPO,WPO)~factor(age5),
                               ~factorfemaleID + factoryear,
                               prior=prior2G.p,
                               data=femaleyear,
-                              family="poisson",
+                              family="multinomial2",
                               nitt=1000000,
                               thin=800,
                               burnin=200000)
-  plot(femaler2EPOpois.age.yr)
-  # much less change with female age compared to males.
-  # again, clear repeatability. Year effects but not as strong.
-  autocorr(femaler2EPOpois.age.yr$Sol)
-  autocorr(femaler2EPOpois.age.yr$VCV)
-  # fine.
+  plot(femaler2EPOmulti.age.yr)
+  # 
+  autocorr(femaler2EPOmulti.age.yr$Sol)
+  autocorr(femaler2EPOmulti.age.yr$VCV)
 }
+
+# as a per brood analysis for females:
+
+{
+  femaler2EPObrood <- MCMCglmm(cbind(EPO,WPO)~1,
+                               ~factorfemaleID,
+                               prior=prior1G.p,
+                               data=broodWE,
+                               family="multinomial2",
+                               nitt=1000000,
+                               thin=800,
+                               burnin=200000)
+  plot(femaler2EPObrood)
+  # 
+  autocorr(femaler2EPObrood$Sol)
+  autocorr(femaler2EPObrood$VCV)
+}
+
+# as with males, include extra factors, but this time to see
+# whether repeatability remains or is a result of these 
+# effects:
+# female with year:
+{
+  femaler2EPObrood.yr <- MCMCglmm(cbind(EPO,WPO)~1,
+                                      ~factorfemaleID + factoryear,
+                                      prior=prior2G.p,
+                                      data=broodWE,
+                                      family="multinomial2",
+                                      nitt=1000000,
+                                      thin=800,
+                                      burnin=200000)
+  plot(femaler2EPObrood.age.yr)
+  # 
+  autocorr(femaler2EPObrood.age.yr$Sol)
+  autocorr(femaler2EPObrood.age.yr$VCV)
+}
+
+
 
 ##############################################################################
 # Heritability of male behaviour
@@ -1710,6 +1889,9 @@ hist(maleyear$EPO/(maleyear$EPO+maleyear$WPO))
                                    burnin=200000)
   plot(femaleh2EPO.multi.yr.mincohort)
   # hum. Maternal ID almost expressed...
+  autocorr(femaleh2EPO.multi.yr.mincohort$Sol)
+  autocorr(femaleh2EPO.multi.yr.mincohort$VCV)
+  # fine
 }
 
 # add year of breeding to model without cohort, as a possible confound
@@ -1725,6 +1907,14 @@ hist(maleyear$EPO/(maleyear$EPO+maleyear$WPO))
                                              nitt=1000000,
                                              thin=800,
                                              burnin=200000)
+  plot(femaleh2EPO.multi.yr.mincohort.year)
+  # hum. More evidence of a femaleID term than before, 
+  # and similar for maternalID (still nothing to write
+  # about but there you go. There are no imputed dams
+  # in this).
+  autocorr(femaleh2EPO.multi.yr.mincohort.year$Sol)
+  autocorr(femaleh2EPO.multi.yr.mincohort.year$VCV)
+  # ok
 }
 
 ##############################################################################
