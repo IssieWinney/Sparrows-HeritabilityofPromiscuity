@@ -1336,10 +1336,13 @@ hist(maleyear$EPO/(maleyear$EPO+maleyear$WPO))
                                          thin=800,
                                          burnin=200000)
   plot(maleh2EPO.multi.yr.pat.age.year)
-  # 
+  # Most things show nothing. Something loaded on paternal ID but not enough
+  # to separate. Cohort easier to separate, still not easily distinguished
+  # effect
   autocorr(maleh2EPO.multi.yr.pat.age.year$Sol)
   autocorr(maleh2EPO.multi.yr.pat.age.year$VCV)
-  #
+  # factoryear:factoryear, -0.985 not ideal. I think the model is too
+  # much for the data.
 }
 
 #-------------------------------------------
@@ -1454,6 +1457,46 @@ hist(maleyear$EPO/(maleyear$EPO+maleyear$WPO))
   # as previously, all pass the test of being below 0.1.
 }
 
+# since very low signal, suggestive of overspecified model.
+# try model with only male ID, animal, and maternal ID
+
+{
+  maleh2EPO.pois.yr.mincohort <- MCMCglmm(EPO~1,
+                                ~factoranimal + factormaleID +
+                                  factormaternalID,
+                                ginverse=list(factoranimal=invped.malelifetime),
+                                prior=prior3G.p,
+                                data=maleyear,
+                                family="poisson",
+                                nitt=1000000,
+                                thin=800,
+                                burnin=200000)
+  plot(maleh2EPO.pois.yr.mincohort)
+  # maternal ID strongest as before.
+  autocorr(maleh2EPO.pois.yr.mincohort$Sol)
+  autocorr(maleh2EPO.pois.yr.mincohort$VCV)
+  # fine
+}
+
+# and account for male age and year that EPO was measured to eliminate
+# important sources of noise
+{
+  maleh2EPO.pois.yr.mincohort.year.age <- MCMCglmm(EPO~factor(age6),
+                                          ~factoranimal + factormaleID +
+                                            factormaternalID + factoryear,
+                                          ginverse=list(factoranimal=invped.malelifetime),
+                                          prior=prior4G.p,
+                                          data=maleyear,
+                                          family="poisson",
+                                          nitt=1000000,
+                                          thin=800,
+                                          burnin=200000)
+  plot(maleh2EPO.pois.yr.mincohort.year.age)
+  # still strongest maternal ID.
+  autocorr(maleh2EPO.pois.yr.mincohort.year.age$Sol)
+  autocorr(maleh2EPO.pois.yr.mincohort.year.age$VCV)
+  # some 0.8 autocorrelations.
+}
 
 #-------------------------------------------
 # Lifetime female behaviour as a poisson variable
@@ -1470,7 +1513,13 @@ hist(maleyear$EPO/(maleyear$EPO+maleyear$WPO))
                                              nitt=1000000,
                                              thin=800,
                                              burnin=200000)
-  
+  plot(femaleh2EPO.multinomial.lifetime)
+  # not much is apparent in this mode. It looks like the model
+  # wants to calculate some variance for animal or maternal ID.
+  # no variance is given to cohort.
+  autocorr(femaleh2EPO.multinomial.lifetime$Sol)
+  autocorr(femaleh2EPO.multinomial.lifetime$VCV)
+  # ok.
 }
 
 # also accounting for female lifespan as a fixed factor between 1 and 5:
@@ -1484,7 +1533,14 @@ hist(maleyear$EPO/(maleyear$EPO+maleyear$WPO))
                                                       nitt=1000000,
                                                       thin=800,
                                                       burnin=200000)
-  
+  plot(femaleh2EPO.multinomial.lifetime.lifespan)
+  # suggesting fewer EPO in longer lived females... likely due to a 
+  # more accurate information on longer lived females.
+  # slightly more ability to distinguish maternal ID. Suggests maternal
+  # ID could matter.
+  autocorr(femaleh2EPO.multinomial.lifetime.lifespan$Sol)
+  # lifespan2:lifespan4 a randomly high autocorrelation value
+  autocorr(femaleh2EPO.multinomial.lifetime.lifespan$VCV)
 }
 
 # additional consideration: whether incidental assortative mating by promiscuity
@@ -1502,7 +1558,11 @@ hist(maleyear$EPO/(maleyear$EPO+maleyear$WPO))
                                                    nitt=1000000,
                                                    thin=800,
                                                    burnin=200000)
-  
+  plot(femaleh2EPO.multinomial.lifetime.patID)
+  # nothing distinguished at all any more.
+  autocorr(femaleh2EPO.multinomial.lifetime.patID$Sol)
+  # some high autocorrelation.
+  autocorr(femaleh2EPO.multinomial.lifetime.patID$VCV)
 }
 
 # paternal ID and lifespan
@@ -1518,7 +1578,11 @@ hist(maleyear$EPO/(maleyear$EPO+maleyear$WPO))
                                                      nitt=1000000,
                                                      thin=800,
                                                      burnin=200000)
-  
+  plot(femaleh2EPO.multinomial.lifetime.patID.lifespan)
+  # very little. Something maternal but can't be estimated.
+  autocorr(femaleh2EPO.multinomial.lifetime.patID.lifespan$Sol)
+  autocorr(femaleh2EPO.multinomial.lifetime.patID.lifespan$VCV)
+  # ok
 }
 
 
@@ -1538,7 +1602,12 @@ hist(maleyear$EPO/(maleyear$EPO+maleyear$WPO))
                                                nitt=1000000,
                                                thin=800,
                                                burnin=200000)
-  
+  plot(femaleh2EPO.multi.yr)
+  # looks like the model wants to partition a little to animal, female, and mother
+  # but it is lacking the ability to partition to any.
+  autocorr(femaleh2EPO.multi.yr$Sol)
+  autocorr(femaleh2EPO.multi.yr$VCV)
+  # ok
 }
 
 # with age as a fixed factor between 1 and 6
@@ -1553,6 +1622,13 @@ hist(maleyear$EPO/(maleyear$EPO+maleyear$WPO))
                                    nitt=1000000,
                                    thin=800,
                                    burnin=200000)
+  plot(femaleh2EPO.multi.yr.age)
+  # no real effect of female age
+  # still no clear separation with the random effects.
+  autocorr(femaleh2EPO.multi.yr.age$Sol)
+  # a bit high
+  autocorr(femaleh2EPO.multi.yr.age$VCV)
+  # one also a little high
 }
 
 # with paternalID
@@ -1568,6 +1644,12 @@ hist(maleyear$EPO/(maleyear$EPO+maleyear$WPO))
                                    nitt=1000000,
                                    thin=800,
                                    burnin=200000)
+  plot(femaleh2EPO.multi.yr.pat)
+  # not really many effects here either. Maybe all these models are
+  # doing too much for the available data.
+  autocorr(femaleh2EPO.multi.yr.pat$Sol)
+  autocorr(femaleh2EPO.multi.yr.pat$VCV)
+  # fine
 }
 
 # with paternalID and age
@@ -1583,11 +1665,16 @@ hist(maleyear$EPO/(maleyear$EPO+maleyear$WPO))
                                        nitt=1000000,
                                        thin=800,
                                        burnin=200000)
+  plot(femaleh2EPO.multi.yr.pat.age)
+  # nothing of importance.
+  autocorr(femaleh2EPO.multi.yr.pat.age$Sol)
+  autocorr(femaleh2EPO.multi.yr.pat.age$VCV)
+  # ok
 }
 
 # with year of breeding as a random effect, paternal ID, and age
 {
-  femaleh2EPO.multi.yr.pat.year <- MCMCglmm(cbind(EPO, WPO)~1,
+  femaleh2EPO.multi.yr.pat.age.year <- MCMCglmm(cbind(EPO, WPO)~factor(age5),
                                        ~factoranimal + factorfemaleID +
                                          factormaternalID + factorpaternalID +
                                          factorcohort + factoryear,
@@ -1598,7 +1685,52 @@ hist(maleyear$EPO/(maleyear$EPO+maleyear$WPO))
                                        nitt=1000000,
                                        thin=800,
                                        burnin=200000)
+  plot(femaleh2EPO.multi.yr.pat.age.year)
+  # nothing, long tails suggestive of other values but no clear values.
+  autocorr(femaleh2EPO.multi.yr.pat.age.year$Sol)
+  # 0.8 autocorrelations.
+  autocorr(femaleh2EPO.multi.yr.pat.age.year$VCV)
+  # ok.
 }
+
+# given that nothing has come from these models, do a very
+# simple version of female ID, animal, and mother --> maximum
+# possible power.
+
+{
+  femaleh2EPO.multi.yr.mincohort <- MCMCglmm(cbind(EPO, WPO)~1,
+                                   ~factoranimal + factorfemaleID +
+                                     factormaternalID,
+                                   ginverse=list(factoranimal=invped.femalelifetime),
+                                   prior=prior3G.p,
+                                   data=femaleyear,
+                                   family="multinomial2",
+                                   nitt=1000000,
+                                   thin=800,
+                                   burnin=200000)
+  plot(femaleh2EPO.multi.yr.mincohort)
+  # hum. Maternal ID almost expressed...
+}
+
+# add year of breeding to model without cohort, as a possible confound
+# for the measure of EPO:WPO:
+{
+  femaleh2EPO.multi.yr.mincohort.year <- MCMCglmm(cbind(EPO, WPO)~1,
+                                             ~factoranimal + factorfemaleID +
+                                               factormaternalID + factoryear,
+                                             ginverse=list(factoranimal=invped.femalelifetime),
+                                             prior=prior4G.p,
+                                             data=femaleyear,
+                                             family="multinomial2",
+                                             nitt=1000000,
+                                             thin=800,
+                                             burnin=200000)
+}
+
+##############################################################################
+# Bivariate model: genetic or phenotypic covariance between male and female
+# behaviour
+##############################################################################
 
 
 ##############################################################################
