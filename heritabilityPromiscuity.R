@@ -574,6 +574,44 @@ table(offspring3$EPO, offspring3$WPO)
   str(maleyear)
 }
 
+{
+  # One analysis is to find out whether the heritability
+  # of male behaviour changes as males become older.
+  # for this, two sets of models will be needed. One where
+  # heritability is calculated within each age of male through
+  # an interaction of the age factor with the animal term, and
+  # one where the heritability of promiscuity is calculated 
+  # within a specific age class, with one model per age class.
+  # Therefore, for this second set produce six sets of data
+  # frames, one for each age class:
+  
+  maleyear.age1 <- maleyear[which(maleyear$age6==1),]
+  maleyear.age2 <- maleyear[which(maleyear$age6==2),]
+  maleyear.age3 <- maleyear[which(maleyear$age6==3),]
+  maleyear.age4 <- maleyear[which(maleyear$age6==4),]
+  maleyear.age5 <- maleyear[which(maleyear$age6==5),]
+  maleyear.age6 <- maleyear[which(maleyear$age6==6),]
+  
+  summary(maleyear.age1)
+  summary(maleyear.age2)
+  summary(maleyear.age3)
+  summary(maleyear.age4)
+  summary(maleyear.age5)
+  summary(maleyear.age6)
+  
+  length(maleyear.age1$age6)
+  length(maleyear.age2$age6)
+  length(maleyear.age3$age6)
+  length(maleyear.age4$age6)
+  length(maleyear.age5$age6)
+  length(maleyear.age6$age6)
+  
+  table(maleyear$age6)
+  # numbers of males pretty small when it gets to four and
+  # above. But see how the model copes. It might be that such
+  # a model is only possible with ages 1-3 or 1-4.
+}
+
 ##############################################################################
 # female phenotypes 
 ##############################################################################
@@ -1103,6 +1141,13 @@ hist(malephenotypes$EPO/(malephenotypes$EPO+malephenotypes$WPO))
 # in the per year data?
 hist(maleyear$EPO, breaks=seq(-1,16,1))
 hist(maleyear$EPO/(maleyear$EPO+maleyear$WPO))
+
+# what about in the female data set?
+# here the main measure is proportion of EPO
+hist(femalephenotypes$EPO/(femalephenotypes$EPO+femalephenotypes$WPO))
+# much more variation compared to the males data set.
+
+
 }
 ##############################################################################
 # Priors
@@ -1279,7 +1324,7 @@ hist(maleyear$EPO/(maleyear$EPO+maleyear$WPO))
 # as with males, include extra factors, but this time to see
 # whether repeatability remains or is a result of these 
 # effects:
-# female poisson with female age as fixed factor, and year:
+# female multinomial with female age as fixed factor, and year:
 {
   femaler2EPOmulti.age.yr <- MCMCglmm(cbind(EPO,WPO)~factor(age5),
                               ~factorfemaleID + factoryear,
@@ -1436,6 +1481,9 @@ hist(maleyear$EPO/(maleyear$EPO+maleyear$WPO))
   # with the addition of paternal ID, the maternal effect is much harder to 
   # estimate and the paternal effect is of comparable size, so maybe it is
   # an assortative mating thing. Cohort effects are clearer now.
+  autocorr(maleh2EPO.multinomial.lifetime.patID$Sol)
+  autocorr(maleh2EPO.multinomial.lifetime.patID$VCV)
+  # fine
 }
 
 # paternal ID and lifespan...
@@ -1803,6 +1851,90 @@ hist(maleyear$EPO/(maleyear$EPO+maleyear$WPO))
 # for this or other reasons).
 
 # so, calculate heritability for each age within males:
+{
+  maleh2EPO.age1 <- MCMCglmm(EPO~1,
+                             ~factoranimal +  factormaternalID + factoryear,
+                             ginverse=list(factoranimal=invped.malelifetime),
+                             prior=prior3G.p,
+                             data=maleyear.age1,
+                             family="poisson",
+                             nitt=1000000,
+                             thin=800,
+                             burnin=200000)
+  
+  plot(maleh2EPO.age1)
+  # maternal ID comes out strongly.
+}
+
+{
+  maleh2EPO.age2 <- MCMCglmm(EPO~1,
+                             ~factoranimal +  factormaternalID + factoryear,
+                             ginverse=list(factoranimal=invped.malelifetime),
+                             prior=prior3G.p,
+                             data=maleyear.age2,
+                             family="poisson",
+                             nitt=1000000,
+                             thin=800,
+                             burnin=200000)
+  plot(maleh2EPO.age2)
+}
+
+{
+  maleh2EPO.age3 <- MCMCglmm(EPO~1,
+                             ~factoranimal +  factormaternalID + factoryear,
+                             ginverse=list(factoranimal=invped.malelifetime),
+                             prior=prior3G.p,
+                             data=maleyear.age3,
+                             family="poisson",
+                             nitt=1000000,
+                             thin=800,
+                             burnin=200000)
+  plot(maleh2EPO.age3)
+  # more evidence of an animal term here. Still not strong.
+}
+
+{
+  maleh2EPO.age4 <- MCMCglmm(EPO~1,
+                             ~factoranimal +  factormaternalID + factoryear,
+                             ginverse=list(factoranimal=invped.malelifetime),
+                             prior=prior3G.p,
+                             data=maleyear.age4,
+                             family="poisson",
+                             nitt=1000000,
+                             thin=800,
+                             burnin=200000)
+  plot(maleh2EPO.age4)
+}
+
+{
+  maleh2EPO.age5 <- MCMCglmm(EPO~1,
+                             ~factoranimal +  factormaternalID + factoryear,
+                             ginverse=list(factoranimal=invped.malelifetime),
+                             prior=prior3G.p,
+                             data=maleyear.age5,
+                             family="poisson",
+                             nitt=1000000,
+                             thin=800,
+                             burnin=200000)
+  plot(maleh2EPO.age5)
+}
+
+{
+  maleh2EPO.age6 <- MCMCglmm(EPO~1,
+                             ~factoranimal +  factormaternalID + factoryear,
+                             ginverse=list(factoranimal=invped.malelifetime),
+                             prior=prior3G.p,
+                             data=maleyear.age6,
+                             family="poisson",
+                             nitt=1000000,
+                             thin=800,
+                             burnin=200000)
+  plot(maleh2EPO.age6)
+  # nowt. I expected that though - the model has a sample size of about 30!
+  autocorr(maleh2EPO.age6$Sol)
+  autocorr(maleh2EPO.age6$VCV)
+  # fine and dandy.
+}
 
 # and what should be a similar model: interact Va with age
 # in the random effects (male ID and age cannot interact
@@ -1821,6 +1953,25 @@ hist(maleyear$EPO/(maleyear$EPO+maleyear$WPO))
                                    nitt=100000,
                                    thin=80,
                                    burnin=20000)
+  plot(maleh2EPO.pois.byage)
+  # so, hints of some Va at age 2-3, but is it right to have
+  # all these covariances? Why have a genetic covariance between
+  # age 1 and age 6, for example?
+  # maternal ID is still there as the best estimated random effect.
+}
+
+{
+  # with idh() variance structure:
+  maleh2EPO.pois.byage.idh <- MCMCglmm(EPO~factor(age6),
+                                   ~idh(factor(age6)):factoranimal + factormaleID +
+                                     factormaternalID + factoryear,
+                                   ginverse=list(factoranimal=invped.malelifetime),
+                                   prior=prior4G.p.penetrance,
+                                   data=maleyear,
+                                   family="poisson",
+                                   nitt=1000000,
+                                   thin=800,
+                                   burnin=200000)
 }
 
 #-------------------------------------------
