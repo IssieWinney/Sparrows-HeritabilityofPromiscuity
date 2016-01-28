@@ -1072,6 +1072,91 @@ offspring4[which((offspring4$SocialMumID==offspring4$GeneticMumID)==FALSE),]
   table(broodWE$dadage6)
 }
 
+{
+  # adding the social pair's shared maternal effect
+  broodWE$pairMaternal <- paste(broodWE$maternalID, broodWE$DadmaternalID, sep="plus")
+  broodWE$factorpairMaternal <- as.factor(broodWE$pairMaternal)
+}
+
+
+##############################################################################
+# combined phenotypes 
+##############################################################################
+
+# For hypotheses of the evolution of promiscuity to work, there needs to be
+# shared genetic covariance between males and females. Therefore, I need a
+# bivariate data frame to account for the essential random and fixed effects
+# that impact each behaviour.
+# I will use male EPO per year and female proportion EPO per year so that the
+# model is not biased by the lifetime of the birds and so that there is more
+# variation in the female data to help the model fit.
+
+# from both data sets, I need bird ID, animal, maternal ID, and year effects.
+# from the male data set, I need male age.
+
+{
+  # Load female data:
+  
+  head(femaleyear)
+
+  f1 <- data.frame(animal=femaleyear$femaleid,
+                       birdID=femaleyear$femaleid,
+                       EPOf=femaleyear$EPO,
+                       EPOm=NA,
+                       WPOf=femaleyear$WPO,
+                       WPOm=NA,
+                       year=femaleyear$year,
+                       maternalID=femaleyear$maternalID,
+                       maleage=NA,
+                       sex="F")
+
+  head(f1)
+  summary(f1)
+  # some missing mothers. One case of 10 EPO
+  f1[which(f1$EPOf==10),]
+  # how strange. I suspect the father is misidentified.
+  offspring[which(offspring$SocialMumID==4972),]
+  # This is weird. There is only one social father. But he only
+  # sires one offspring. I would have guessed an assignment error but
+  # since he did sire one offspring I guess it is a very promiscuous
+  # female.
+  
+  str(f1)
+}
+
+{
+  # Load male data:
+  
+  head(maleyear)
+  
+  m1 <- data.frame(animal=maleyear$maleid,
+                         birdID=maleyear$maleid,
+                         EPOf=NA,
+                         EPOm=maleyear$EPO,
+                         WPOf=NA,
+                         WPOm=maleyear$WPO,
+                         year=maleyear$year,
+                         maternalID=maleyear$maternalID,
+                         maleage=maleyear$age6,
+                         sex="M")
+  
+  head(m1)
+  summary(m1)
+  # 84 missing dams.
+  str(m1)
+}
+
+{
+  # combine the data frames:
+  bothsexesyear <- rbind(f1, m1)
+  
+  head(bothsexesyear)
+  tail(bothsexesyear)
+  str(bothsexesyear)
+  summary(bothsexesyear)
+}
+
+
 ##############################################################################
 # Pruning the pedigree
 ##############################################################################
@@ -1094,6 +1179,14 @@ offspring4[which((offspring4$SocialMumID==offspring4$GeneticMumID)==FALSE),]
   # take a look at the pruned info:
   drawPedigree(prunedped.malelifetime)
   pedigreeinformation <- pedigreeStats(prunedped.malelifetime)
+  #
+  #
+  #
+  #
+  #
+  #
+  #
+  #
   pedStatSummary(pedigreeinformation)
   
   # for females:
@@ -1107,10 +1200,38 @@ offspring4[which((offspring4$SocialMumID==offspring4$GeneticMumID)==FALSE),]
   # i.e. parents differ because 1 - in a couple of cases there
   # is more than one female per brood 2 - the maleID is the social
   # male of the brood***
-  keepers <- c(broodWE$MumID, broodWE$DadID)
+  keepers <- c(unique(broodWE$MumID), unique(broodWE$DadID))
   prunedped.bothsexes <- prunePed(pedigree=fixedsparrowped, 
                                   keep=keepers)
   head(prunedped.bothsexes)
+  
+  
+  # and for both males and females in the broodWE data set with
+  # missing maternal IDs for males and females pruned out:
+  keepers <- c(unique(broodWE.fullmums$MumID), unique(broodWE.fullmums$DadID))
+  prunedped.bothsexes.fullmums <- prunePed(pedigree=fixedsparrowped, 
+                                  keep=keepers)
+  head(prunedped.bothsexes.fullmums)
+  
+  
+  
+  # for both males and females in the combined data set of per year
+  # behaviour:
+  keepers <- unique(bothsexesyear$birdID)
+  prunedped.bothsexesyear <- prunePed(pedigree=fixedsparrowped, 
+                                      keep=keepers)
+  
+  # pedigree info for both sexes:
+  pedigreeinformation <- pedigreeStats(prunedped.bothsexesyear)
+  #
+  #
+  #
+  #
+  #
+  #
+  #
+  #
+  pedStatSummary(pedigreeinformation)
 }
 
 # and then the pedigrees can be converted to relationship matrices
@@ -1124,6 +1245,12 @@ offspring4[which((offspring4$SocialMumID==offspring4$GeneticMumID)==FALSE),]
   
   invped.bothsexes <- inverseA(prunedped.bothsexes)$Ainv
   summary(invped.bothsexes)
+  
+  invped.bothsexes.fullmums <- inverseA(prunedped.bothsexes.fullmums)$Ainv
+  summary(invped.bothsexes.fullmums)
+  
+  invped.bothsexesyear <- inverseA(prunedped.bothsexesyear)$Ainv
+  summary(invped.bothsexesyear)
 }
 
 ##############################################################################
@@ -1148,6 +1275,12 @@ hist(femalephenotypes$EPO/(femalephenotypes$EPO+femalephenotypes$WPO))
 # much more variation compared to the males data set.
 
 
+# And when done per brood, are there many more zeros and ones?
+hist(broodWE$EPO/(broodWE$EPO+broodWE$WPO))
+# many more zeros with the rest of the data more evenly spread.
+
+table(broodWE$EPO/(broodWE$EPO+broodWE$WPO))
+# 836 zero values.
 }
 ##############################################################################
 # Priors
@@ -1188,6 +1321,17 @@ hist(femalephenotypes$EPO/(femalephenotypes$EPO+femalephenotypes$WPO))
                           G4=list(V = 1, nu = 1, alpha.mu = 0, alpha.V = 1000),
                           G5=list(V = 1, nu = 1, alpha.mu = 0, alpha.V = 1000),
                           G6=list(V = 1, nu = 1, alpha.mu = 0, alpha.V = 1000)))
+  
+  prior9G.p = list(R=list(V=1,nu=0.002),
+                   G=list(G1=list(V = 1, nu = 1, alpha.mu = 0, alpha.V = 1000),
+                          G2=list(V = 1, nu = 1, alpha.mu = 0, alpha.V = 1000),
+                          G3=list(V = 1, nu = 1, alpha.mu = 0, alpha.V = 1000),
+                          G4=list(V = 1, nu = 1, alpha.mu = 0, alpha.V = 1000),
+                          G5=list(V = 1, nu = 1, alpha.mu = 0, alpha.V = 1000),
+                          G6=list(V = 1, nu = 1, alpha.mu = 0, alpha.V = 1000),
+                          G7=list(V = 1, nu = 1, alpha.mu = 0, alpha.V = 1000),
+                          G8=list(V = 1, nu = 1, alpha.mu = 0, alpha.V = 1000),
+                          G9=list(V = 1, nu = 1, alpha.mu = 0, alpha.V = 1000)))
 }
 
 # parameter expanded priors with a covariance structure on the first
@@ -1238,6 +1382,17 @@ hist(femalephenotypes$EPO/(femalephenotypes$EPO+femalephenotypes$WPO))
                         G2=list(V = 1, nu = 1, alpha.mu = 0, alpha.V = 1000),
                         G3=list(V = 1, nu = 1, alpha.mu = 0, alpha.V = 1000),
                         G4=list(V = 1, nu = 1, alpha.mu = 0, alpha.V = 1000)))
+}
+
+
+# slightly informative inverse-Wishart priors, with nu=0.02:
+# .strong used to denote the slightly informative prior
+{
+  prior4G.strong = list(R = list(V = 1,nu = 0.02),
+                 G = list(G1 = list(V = 1, nu = 0.02),
+                          G2 = list(V = 1, nu = 0.02),
+                          G3 = list(V = 1, nu = 0.02),
+                          G4 = list(V = 1, nu = 0.02)))
 }
 
 
@@ -1341,8 +1496,7 @@ hist(femalephenotypes$EPO/(femalephenotypes$EPO+femalephenotypes$WPO))
   # within each female (though not proof).
   autocorr(femaler2EPOmulti.age.yr$Sol)
   autocorr(femaler2EPOmulti.age.yr$VCV)
-  # age2 to intercept has a value of -0.11. Too high.
-  # Though negative so probably doesn't make a difference.
+  # fine
 }
 
 # but female age has virtually no effect --> just year:
@@ -1356,7 +1510,7 @@ hist(femalephenotypes$EPO/(femalephenotypes$EPO+femalephenotypes$WPO))
                                       thin=800,
                                       burnin=200000)
   plot(femaler2EPOmulti.yr)
-  # female repeatable here, no effect of year of reproduction.
+  # female repeatable here, no clear effect of year of reproduction.
   autocorr(femaler2EPOmulti.yr$Sol)
   autocorr(femaler2EPOmulti.yr$VCV)
   # fine.
@@ -1401,6 +1555,7 @@ hist(femalephenotypes$EPO/(femalephenotypes$EPO+femalephenotypes$WPO))
   # zero. Female is clearly repeatable.
   autocorr(femaler2EPObrood.yr$Sol)
   autocorr(femaler2EPObrood.yr$VCV)
+  # fine
 }
 
 
@@ -1864,6 +2019,8 @@ hist(femalephenotypes$EPO/(femalephenotypes$EPO+femalephenotypes$WPO))
   
   plot(maleh2EPO.age1)
   # maternal ID comes out strongly.
+  # the units in the model are not properly estimated.
+  # the model would have to be run longer.
 }
 
 {
@@ -1877,6 +2034,7 @@ hist(femalephenotypes$EPO/(femalephenotypes$EPO+femalephenotypes$WPO))
                              thin=800,
                              burnin=200000)
   plot(maleh2EPO.age2)
+  # here, units estimated but no maternal ID. Maybe either/or.
 }
 
 {
@@ -1891,6 +2049,7 @@ hist(femalephenotypes$EPO/(femalephenotypes$EPO+femalephenotypes$WPO))
                              burnin=200000)
   plot(maleh2EPO.age3)
   # more evidence of an animal term here. Still not strong.
+  # and again probems estimating units.
 }
 
 {
@@ -1904,6 +2063,8 @@ hist(femalephenotypes$EPO/(femalephenotypes$EPO+femalephenotypes$WPO))
                              thin=800,
                              burnin=200000)
   plot(maleh2EPO.age4)
+  # Here and onwards, the sample size isn't sufficient for this
+  # type of analysis.
 }
 
 {
@@ -1958,6 +2119,11 @@ hist(femalephenotypes$EPO/(femalephenotypes$EPO+femalephenotypes$WPO))
   # all these covariances? Why have a genetic covariance between
   # age 1 and age 6, for example?
   # maternal ID is still there as the best estimated random effect.
+  autocorr(maleh2EPO.pois.byage$Sol)
+  # age3:age2 0.11. Other high autocorrelations suggest this model
+  # would need much longer.
+  autocorr(maleh2EPO.pois.byage$VCV)
+  # and the same with high autocorrelation here.
 }
 
 {
@@ -1972,6 +2138,14 @@ hist(femalephenotypes$EPO/(femalephenotypes$EPO+femalephenotypes$WPO))
                                    nitt=1000000,
                                    thin=800,
                                    burnin=200000)
+  plot(maleh2EPO.pois.byage.idh)
+  # again, suggestion age 2 has most power to detect animal term 
+  # but not clearly detected. Male ID term does ok, though not
+  # clearly estimated either. Maternal ID is the most clearly
+  # estimated.
+  autocorr(maleh2EPO.pois.byage.idh$Sol)
+  autocorr(maleh2EPO.pois.byage.idh$VCV)
+  # age1:animal under age4 a little high. Otherwise fine.
 }
 
 #-------------------------------------------
@@ -2212,11 +2386,33 @@ hist(femalephenotypes$EPO/(femalephenotypes$EPO+femalephenotypes$WPO))
   autocorr(femaleh2EPO.multi.yr.mincohort.year$Sol)
   autocorr(femaleh2EPO.multi.yr.mincohort.year$VCV)
   # ok
+  posterior.mode(femaleh2EPO.multi.yr$VCV)
+  mean(femaleh2EPO.multi.yr$VCV[,1])
+  mean(femaleh2EPO.multi.yr$VCV[,2])
 }
 
 
+# how does this model change if I use a slightly informative 
+# prior: an inverse-Wishart with nu=0.02
+{
+  femaleh2EPO.multi.strongprior <- MCMCglmm(cbind(EPO, WPO)~1,
+                                                  ~factoranimal + factorfemaleID +
+                                                    factormaternalID + factoryear,
+                                                  ginverse=list(factoranimal=invped.femalelifetime),
+                                                  prior=prior4G.strong,
+                                                  data=femaleyear,
+                                                  family="multinomial2",
+                                                  nitt=1000000,
+                                                  thin=800,
+                                                  burnin=200000)
+  plot(femaleh2EPO.multi.strongprior)
+  # fairly similar, with year estimated though. So year benefits
+  # from the stronger prior.
+  posterior.mode(femaleh2EPO.multi.strongprior$VCV)
+}
+
 #-------------------------------------------
-# Per brood female behaviour as a poisson variable
+# Per brood female behaviour as a multinomial variable
 #-------------------------------------------
 
 # with this being per brood, can and should account for the social
@@ -2224,7 +2420,7 @@ hist(femalephenotypes$EPO/(femalephenotypes$EPO+femalephenotypes$WPO))
 # effect on the female, the male's year, and the year of reproduction.
 # See Reid et al 2015 for the approach.
 {
-  broodEPO <- MCMCglmm(cbind(EPO, WPO)~factor(dadage6),
+  broodEPO.dadage <- MCMCglmm(cbind(EPO, WPO)~factor(dadage6),
                         random=~str(factoranimal + factordadanimal) + 
                           factorfemaleID + factorDadID + factoryear,
                         family="multinomial2",
@@ -2235,24 +2431,22 @@ hist(femalephenotypes$EPO/(femalephenotypes$EPO+femalephenotypes$WPO))
                         nitt=1000000,
                         thin=800,
                         burnin=200000)
-  plot(broodEPO)
+  plot(broodEPO.dadage)
   # results intriguing: some evidence for female additive genetics
   # for the trait, though not strong. No covariance. No male additive
   # genetics. Mum and Dad ID matter. Oh, but I forgot both mother's
   # mother and father's mother, to calculate maternal effects.
   # It also seems the social male's age doesn't affect this trait.
-  autocorr(broodEPO$Sol)
-  autocorr(broodEPO$VCV)
-  # autocorrelation good.
+  autocorr(broodEPO.dadage$Sol)
+  # age3:age5 0.0999
+  autocorr(broodEPO.dadage$VCV)
+  # fine.
 }
 
 # adding the maternal effects for the male and female.
 # adding pairID to account for phenotypic similarity.
 # adding a maternal shared effect for males and females
 # in case maternal effects have the same outcome in each sex.
-
-broodWE$pairMaternal <- paste(broodWE$maternalID, broodWE$DadmaternalID, sep="plus")
-broodWE$factorpairMaternal <- as.factor(broodWE$pairMaternal)
 {
   broodEPO.maternal.pair <- MCMCglmm(cbind(EPO, WPO)~factor(dadage6),
                        random=~str(factoranimal + factordadanimal) + 
@@ -2282,6 +2476,8 @@ broodWE$factorpairMaternal <- as.factor(broodWE$pairMaternal)
 broodWE.fullmums1 <- broodWE[-which(is.na(broodWE$maternalID)),]
 broodWE.fullmums <- broodWE.fullmums1[-which(is.na(broodWE.fullmums1$DadmaternalID)),]
 
+summary(broodWE.fullmums)
+
 {
   broodEPO.maternal.pair.mums <- MCMCglmm(cbind(EPO, WPO)~factor(dadage6),
                                      random=~str(factoranimal + factordadanimal) + 
@@ -2290,17 +2486,52 @@ broodWE.fullmums <- broodWE.fullmums1[-which(is.na(broodWE.fullmums1$Dadmaternal
                                        factorpairMaternal + factorpairID,
                                      family="multinomial2",
                                      prior=priorspecial8G.p,
-                                     ginverse=list(factoranimal=invped.bothsexes,
-                                                   factordadanimal=invped.bothsexes),
+                                     ginverse=list(factoranimal=invped.bothsexes.fullmums,
+                                                   factordadanimal=invped.bothsexes.fullmums),
                                      data=broodWE.fullmums,
                                      nitt=1000000,
                                      thin=800,
                                      burnin=200000)
   plot(broodEPO.maternal.pair.mums)
-  # not a bit of a negative effect of older father, so females more
+  # a bit of a negative effect of older father, so females more
   # faithful to oldest partners but not a lot.
   # again, quite wishy-washy for effects. How did Jane Reid get any
   # results out of this?
+  # Too much in a model? There isn't a lot that can be taken out
+  # to help model fit except the genetic covariance could be knocked out.
+}
+
+{
+  broodEPO.maternal.pair.mums <- MCMCglmm(cbind(EPO, WPO)~factor(dadage6),
+                                          random=~factoranimal + factordadanimal + 
+                                            factormaternalID + factorDadmaternalID + 
+                                            factorfemaleID + factorDadID + factoryear +
+                                            factorpairMaternal + factorpairID,
+                                          family="multinomial2",
+                                          prior=prior9G.p,
+                                          ginverse=list(factoranimal=invped.bothsexes.fullmums,
+                                                        factordadanimal=invped.bothsexes.fullmums),
+                                          data=broodWE.fullmums,
+                                          nitt=1000000,
+                                          thin=800,
+                                          burnin=200000)
+  plot(broodEPO.maternal.pair.mums)
+  # Nothing. Nothing at all. This is either over-stretching the data or 
+  # something else is going on.
+  
+  # one problem could be my EPP rates.
+  table(offspring3$EPO)
+  # 17% EPO. 
+  format(table(offspring3$EPO, offspring3$Cohort)[2,]/(table(offspring3$EPO, offspring3$Cohort)[1,]+
+                                                  table(offspring3$EPO, offspring3$Cohort)[2,]),digits=2)
+  
+  # Per year rates vary from a low of 9% to a high of 24%.
+  # Jane Reid has an average of 28% EPO (Reid et al 2014, Evolution)
+  # So to have a comparable sample size of EPO I would need 1.5 times
+  # her data set size.
+  # Maybe there are too many zero broods to work on the per brood level
+  # for females, and I have to work on the per year level for females to
+  # have sufficient variation.
 }
 
 ##############################################################################
@@ -2308,6 +2539,75 @@ broodWE.fullmums <- broodWE.fullmums1[-which(is.na(broodWE.fullmums1$Dadmaternal
 # behaviour
 ##############################################################################
 
+# For the bivariate model, I will use male behaviour within a year and
+# female behaviour within a year. I will use female behaviour within
+# a year because the alternative is per brood, but the problem with per
+# brood is the high number of broods with zero offspring.
+
+# model structure:
+# two dependent variables: 1) proportion of a female's offspring
+# within a year that are EPO, 2) total EPO of a male within a year.
+# One fixed effect: male age on dependent variable 2 ONLY, 
+# as a six-level factor.
+# Trait specific intercepts (since the traits have fundamentally
+#                           different distributions).
+# and the following random effects:
+# bird ID with a within-sex estimate i.e. idh() structure.
+# animal with a within-sex AND between-sex estimate i.e. us() structure.
+# maternal effect with a within-sex AND between-sex estimate i.e. us() structure.
+# year of reproduction. Only one estimate because between-year fluctuations 
+#       in the total number of EPO should affect both sexes equally since
+#       both sexes data come from this one data set.
+# Residual covariance within sex i.e. idh() structure.
+
+# bird ID and residual are estimated without covariance, since no male is
+# assayed for the female trait and vice versa.
+# animal and maternal ID have covariance because males and females can be
+# linked by the pedigree or by their mother's ID.
+# year is explained previously.
+
+{
+  priorbiv4.p <- list(R=list(V=diag(2), nu=0.002),
+                     G=list(G1=list(V=diag(2), nu=2, 
+                                    alpha.mu=c(0,0), alpha.V=diag(2)*1000),
+                            G2=list(V=diag(2), nu=2, 
+                                    alpha.mu=c(0,0), alpha.V=diag(2)*1000),
+                            G3=list(V=diag(2), nu=2, 
+                                    alpha.mu=c(0,0), alpha.V=diag(2)*1000),
+                            G4=list(V=1, nu=1, alpha.mu=0, alpha.V=1000)))
+  
+  bothsexesyear$age <- bothsexesyear$maleage
+  bothsexesyear$age[is.na(bothsexesyear$age)] <- 1
+  bothsexesyear$age
+  table(bothsexesyear$age)
+  table(bothsexesyear$maleage)
+  table(bothsexesyear$sex)
+  
+  bivariateEPO <- MCMCglmm(cbind(EPOm, cbind(EPOf,WPOf))~trait +
+                             factor(age),
+                            random=~us(trait):animal + idh(trait):birdID +
+                             us(trait):maternalID + year,
+                           rcov=~idh(trait):units,
+                            family=c("poisson", "multinomial2"),
+                            prior=priorbiv4.p,
+                            ginverse=list(animal=invped.bothsexesyear),
+                            data=bothsexesyear,
+                            nitt=1000000,
+                            thin=800,
+                            burnin=200000)
+  # bear in mind, for interpretation the female intercept is 
+  # at the reference level of age==1. But the male has a separate
+  # intercept. Age is not interacted with trait, and there is
+  # only variation in the male trait. So the age should fit to
+  # just the male trait data.
+  plot(bivariateEPO)
+}
+
+# with the correct construct for specifying the level on which
+# a factor should act: at.level():
+
+# minus missing dams, to check whether the estimates would remain
+# the same without MCMCglmm adding dams:
 
 ##############################################################################
 # Additional consideration 1: exclude birds that are still alive
