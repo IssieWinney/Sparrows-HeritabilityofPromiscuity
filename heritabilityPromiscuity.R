@@ -249,6 +249,7 @@ table(offspring3$EPO, offspring3$WPO)
 # 856 EPO. 4011 WPO. None identified as both. Good!
 }
 
+
 ##############################################################################
 # cohort data
 ##############################################################################
@@ -1156,6 +1157,58 @@ offspring4[which((offspring4$SocialMumID==offspring4$GeneticMumID)==FALSE),]
   summary(bothsexesyear)
 }
 
+##############################################################################
+# Phenotype per offspring
+##############################################################################
+
+{
+  # Add maternal ID of genetic mother and father
+  
+  offspring4$GenDadMaternalID <- fixedsparrowped$dam[match(offspring4$GeneticDadID,
+                                                           fixedsparrowped$animal)]
+  
+  offspring4$GenMumMaternalID <- fixedsparrowped$dam[match(offspring4$GeneticMumID,
+                                                           fixedsparrowped$animal)]
+}
+
+{
+  # add male age. First, male cohort:
+  
+  offspring4$GenDadCohort <- birdcohort$Cohort[match(offspring4$GeneticDadID,
+                                                     birdcohort$BirdID)]
+  
+  head(offspring4)
+  
+  # age by subtracting Dad's cohort from offspring age:
+  offspring4$GenDadAge <- offspring4$Cohort - offspring4$GenDadCohort
+  
+  table(offspring4$GenDadAge)
+  
+  # correct father with age 0 to be age 1, and amalgamate age >=6
+  
+  offspring4$GenDadAge6 <- offspring4$GenDadAge
+  offspring4$GenDadAge6[which(offspring4$GenDadAge6==0)] <- 1
+  offspring4$GenDadAge6[which(offspring4$GenDadAge6>6)] <- 6
+  
+  table(offspring4$GenDadAge6)
+}
+
+{
+  # set factors
+
+  offspring4$factoryear <- as.factor(offspring4$Cohort)
+  offspring4$factorGenDadID <- as.factor(offspring4$GeneticDadID)
+  offspring4$factorGenDadanimal <- as.factor(offspring4$GeneticDadID)
+  offspring4$factorGenMumID <- as.factor(offspring4$GeneticMumID)
+  offspring4$factorGenMumanimal <- as.factor(offspring4$GeneticMumID)
+  offspring4$factorGenDadMaternalID <- as.factor(offspring4$GenDadMaternalID)
+  offspring4$factorGenMumMaternalID <- as.factor(offspring4$GenMumMaternalID)
+  offspring4$factorGenDadAge6 <- as.factor(offspring4$GenDadAge6)
+  
+  summary(offspring4)
+  str(offspring4)
+}
+
 
 ##############################################################################
 # Pruning the pedigree
@@ -1282,6 +1335,58 @@ hist(broodWE$EPO/(broodWE$EPO+broodWE$WPO))
 table(broodWE$EPO/(broodWE$EPO+broodWE$WPO))
 # 836 zero values.
 }
+
+{
+  # in the analysis of propensity for an individual offspring to
+  # be WPO or EPO, I need to know whether there would be any bias
+  # inherent to correlating the male and female phenotypes, for
+  # example since social pairs might pair for multiple broods and
+  # have numerous WPO together, this could create a correlation
+  # between phenotypes due to reproductive constraints rather than
+  # assortative mating.
+  
+  # So, take a EPO/(total):
+  # THIS IS DONE OVER THE LIFETIME, this is because although the 
+  # phenotype becomes more accurate with more samples, this is the
+  # level at which the intended model would characterise an individual's
+  # phenotype and thus is what I need to compare between genetic pairs.
+  femalephenotypes$EPO.WPO <- femalephenotypes$EPO/
+    (femalephenotypes$EPO+femalephenotypes$WPO)
+  femalephenotypes$EPO.WPO
+  
+  hist(femalephenotypes$EPO.WPO)
+  
+  malephenotypes$EPO.WPO <- malephenotypes$EPO/
+    (malephenotypes$EPO+malephenotypes$WPO)
+  malephenotypes$EPO.WPO
+  
+  hist(malephenotypes$EPO.WPO)
+  # many suspicious cases of males with all EPO.
+  
+  # add to the offspring data frame:
+  summary(offspring4)
+  
+  offspring4$femalephenotype <- femalephenotypes$EPO.WPO[match(offspring4$GeneticMumID,
+                                                               femalephenotypes$femaleID)]
+  
+  offspring4$malephenotype <- malephenotypes$EPO.WPO[match(offspring4$GeneticDadID,
+                                                               malephenotypes$maleID)]
+  
+  head(offspring4)
+  summary(offspring4)
+  
+  # now plot phenotypes:
+  
+  plot(offspring4$femalephenotype, offspring4$malephenotype)
+  cor(offspring4$femalephenotype, offspring4$malephenotype)
+  
+  # that actually looks good... This should work!
+  table(offspring4$femalephenotype, offspring4$malephenotype)[1,]
+  # there are 204 zero-zero values. Out of over 3k, that is
+  # good.
+}
+
+
 ##############################################################################
 # Priors
 ##############################################################################
@@ -1393,6 +1498,26 @@ table(broodWE$EPO/(broodWE$EPO+broodWE$WPO))
                           G2 = list(V = 1, nu = 0.02),
                           G3 = list(V = 1, nu = 0.02),
                           G4 = list(V = 1, nu = 0.02)))
+}
+
+# binomial priors. These have residual variance fixed at 1. All
+# other random effects are parameter expanded:
+{
+  priorbinomial4 = list(R = list(V = 1, fix = 1),
+                           G = list(G1 = list(V = diag(2), nu = 2, alpha.mu = c(0,0), alpha.V = diag(2)*1000),
+                                  G2 = list(V = diag(2), nu = 2, alpha.mu = c(0,0), alpha.V = diag(2)*1000),
+                                  G3 = list(V = diag(2), nu = 2, alpha.mu = c(0,0), alpha.V = diag(2)*1000),
+                                  G4 = list(V = 1, nu = 1, alpha.mu = 0, alpha.V = 1000)))
+
+  priorbinomial7 = list(R = list(V = 1, fix = 1),
+                        G = list(G1 = list(V = diag(2), nu = 2, alpha.mu = c(0,0), alpha.V = diag(2)*1000),
+                                 G2 = list(V = 1, nu = 1, alpha.mu = 0, alpha.V = 1000),
+                                 G3 = list(V = 1, nu = 1, alpha.mu = 0, alpha.V = 1000),
+                                 G4 = list(V = 1, nu = 1, alpha.mu = 0, alpha.V = 1000),
+                                 G5 = list(V = 1, nu = 1, alpha.mu = 0, alpha.V = 1000),
+                                 G6 = list(V = 1, nu = 1, alpha.mu = 0, alpha.V = 1000),
+                                 G7 = list(V = 1, nu = 1, alpha.mu = 0, alpha.V = 1000)))
+  
 }
 
 
@@ -2479,7 +2604,7 @@ broodWE.fullmums <- broodWE.fullmums1[-which(is.na(broodWE.fullmums1$Dadmaternal
 summary(broodWE.fullmums)
 
 {
-  broodEPO.maternal.pair.mums <- MCMCglmm(cbind(EPO, WPO)~factor(dadage6),
+  broodEPO.maternal.paircov.mums <- MCMCglmm(cbind(EPO, WPO)~factor(dadage6),
                                      random=~str(factoranimal + factordadanimal) + 
                                        factormaternalID + factorDadmaternalID + 
                                        factorfemaleID + factorDadID + factoryear +
@@ -2492,7 +2617,7 @@ summary(broodWE.fullmums)
                                      nitt=1000000,
                                      thin=800,
                                      burnin=200000)
-  plot(broodEPO.maternal.pair.mums)
+  plot(broodEPO.maternal.paircov.mums)
   # a bit of a negative effect of older father, so females more
   # faithful to oldest partners but not a lot.
   # again, quite wishy-washy for effects. How did Jane Reid get any
@@ -2601,6 +2726,8 @@ summary(broodWE.fullmums)
   # only variation in the male trait. So the age should fit to
   # just the male trait data.
   plot(bivariateEPO)
+  
+  autocorr(bivariateEPO$Sol)
 }
 
 # with the correct construct for specifying the level on which
@@ -2608,6 +2735,65 @@ summary(broodWE.fullmums)
 
 # minus missing dams, to check whether the estimates would remain
 # the same without MCMCglmm adding dams:
+
+{
+  bothsexes.minusmissingdams <- bothsexesyear[-which(is.na(bothsexesyear$maternalID)),]
+  
+  bivariateEPO.minusmissingdams <- MCMCglmm(cbind(EPOm, cbind(EPOf,WPOf))~trait +
+                             factor(age),
+                           random=~us(trait):animal + idh(trait):birdID +
+                             us(trait):maternalID + year,
+                           rcov=~idh(trait):units,
+                           family=c("poisson", "multinomial2"),
+                           prior=priorbiv4.p,
+                           ginverse=list(animal=invped.bothsexesyear),
+                           data=bothsexes.minusmissingdams,
+                           nitt=1000000,
+                           thin=800,
+                           burnin=200000)
+  plot(bivariateEPO.minusmissingdams)
+}
+
+##############################################################################
+# Per offspring model
+##############################################################################
+
+# In this model, each offspring is a data point.
+# The random effects include 
+# 1   the identity of the genetic mother and father (no covariance)
+# 2   the genetic contribution of the mother and father and their genetic covariance
+# 3   the year the offspring was born to account for differences between years
+#     in the number of EPO
+# 4   the maternal effect of the genetic mother and father and their covariance
+# 5   
+
+offspring4$combinedGrandmothers <- paste(offspring4$GenDadMaternalID,
+                                         offspring4$GenMumMaternalID,
+                                         sep="plus")
+# now it is important to remove NA grandmothers:
+
+offspring4.minusGMums1 <- offspring4[-which(is.na(offspring4$GenDadMaternalID)),]
+offspring4.minusGMums <- offspring4.minusGMums1[-which(is.na(offspring4.minusGMums1$GenMumMaternalID)),]
+
+offspring4.minusGMums$factorGrandmothers <- as.factor(offspring4.minusGMums$combinedGrandmothers)
+
+offspringEPO <- MCMCglmm(EPO~factor(GenDadAge6),
+                           random=~str(factorGenDadanimal + factorGenMumanimal) + 
+                           factorGenDadID + factorGenMumID + 
+                           factorGenDadMaternalID + factorGenMumMaternalID + 
+                           factorGrandmothers + factoryear,
+                           family="categorical",
+                           prior=priorbinomial7,
+                           ginverse=list(factorGenDadanimal=invped.bothsexesyear,
+                                         factorGenMumanimal=invped.bothsexesyear),
+                           data=offspring4.minusGMums,
+                           nitt=1000000,
+                           thin=800,
+                           burnin=200000)
+
+plot(offspringEPO)
+
+
 
 ##############################################################################
 # Additional consideration 1: exclude birds that are still alive
