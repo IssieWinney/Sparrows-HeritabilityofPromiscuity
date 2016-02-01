@@ -2620,8 +2620,7 @@ summary(broodWE.fullmums)
   plot(broodEPO.maternal.paircov.mums)
   # a bit of a negative effect of older father, so females more
   # faithful to oldest partners but not a lot.
-  # again, quite wishy-washy for effects. How did Jane Reid get any
-  # results out of this?
+  # again, quite wishy-washy for effects.
   # Too much in a model? There isn't a lot that can be taken out
   # to help model fit except the genetic covariance could be knocked out.
 }
@@ -2792,8 +2791,29 @@ offspringEPO <- MCMCglmm(EPO~factor(GenDadAge6),
                            burnin=200000)
 
 plot(offspringEPO)
+# this model is UNSTABLE. I wonder why.
 
+# One possibility is to remove the father's age, which
+# is known to affect EPO but not affect WPO production.
+# That inter-dependency could be causing the instability.
 
+# run a model without the father's age:
+
+offspringEPO.minusdadage <- MCMCglmm(EPO~1,
+                         random=~str(factorGenDadanimal + factorGenMumanimal) + 
+                           factorGenDadID + factorGenMumID + 
+                           factorGenDadMaternalID + factorGenMumMaternalID + 
+                           factorGrandmothers + factoryear,
+                         family="categorical",
+                         prior=priorbinomial7,
+                         ginverse=list(factorGenDadanimal=invped.bothsexesyear,
+                                       factorGenMumanimal=invped.bothsexesyear),
+                         data=offspring4.minusGMums,
+                         nitt=1000000,
+                         thin=800,
+                         burnin=200000)
+
+plot(offspringEPO.minusdadage)
 
 ##############################################################################
 # Additional consideration 1: exclude birds that are still alive
