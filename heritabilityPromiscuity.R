@@ -613,6 +613,79 @@ table(offspring3$EPO, offspring3$WPO)
   # a model is only possible with ages 1-3 or 1-4.
 }
 
+
+{
+  # Import foster brood information:
+  summary(sqlFetch(sparrowDB, "tblFosterBroods"))
+  
+  # nine missing foster broods. Four missing bird IDs.
+  # These would need to be removed, but this will be adequate as cross-foster data
+  
+  BirdFosterBrood <- sqlQuery(sparrowDB,
+                              "SELECT   tblFosterBroods.BirdID, 
+                              tblFosterBroods.FosterBrood, 
+                              tblBroods.BroodRef, 
+                              tblBroods.SocialDadID, 
+                              tblBroods.SocialMumID
+                              FROM tblFosterBroods 
+                              INNER JOIN tblBroods ON tblFosterBroods.FosterBrood = tblBroods.BroodRef;",
+                              na.strings="NA")
+  
+  summary(BirdFosterBrood)
+  # four entries with no bird ID
+  
+  BirdFosterBrood <- BirdFosterBrood[-which(is.na(BirdFosterBrood$BirdID)),]
+  
+  summary(BirdFosterBrood)
+  
+  # There we go.
+}
+
+{
+  # add the foster mother ID to the male phenotypes. Call
+  # it social mother because later I will add the genetic 
+  # mother to the ones that were not cross-fostered:
+  
+  maleyear$SocialMumID <- BirdFosterBrood$SocialMumID[match(maleyear$maleid,
+                                                            BirdFosterBrood$BirdID)]
+  
+  summary(maleyear$SocialMumID)
+  # so 466 out of 703 were not cross-fostered. Might make disentangling these
+  # two mothers challenging.
+  
+  # replace the 466 NA social mothers with the genetic mother:
+  
+  for(i in 1:length(maleyear$SocialMumID)){
+    if(is.na(maleyear$SocialMumID[i])){
+      maleyear$SocialMumID[i] <- maleyear$maternalID[i]
+    } else {
+      maleyear$SocialMumID[i] <- maleyear$SocialMumID[i]
+    }
+  }
+  
+  summary(maleyear$SocialMumID)
+  
+  
+  length(which(maleyear$SocialMumID==maleyear$maternalID))
+  
+  summary(maleyear$maternalID)
+  
+  # so the missing mothers are missing from the maternalID. I guess
+  # they are founder males or so.
+  
+  # how do the maternal sibships differ with the cross-foster data?
+  table(table(maleyear$maternalID))
+  table(table(maleyear$SocialMumID))
+  # some changes.
+}
+
+{
+  # set as factor
+  maleyear$factorSocialMumID <- as.factor(maleyear$SocialMumID)
+}
+
+
+
 ##############################################################################
 # female phenotypes 
 ##############################################################################
@@ -1487,6 +1560,16 @@ table(broodWE$EPO/(broodWE$EPO+broodWE$WPO))
                         G2=list(V = 1, nu = 1, alpha.mu = 0, alpha.V = 1000),
                         G3=list(V = 1, nu = 1, alpha.mu = 0, alpha.V = 1000),
                         G4=list(V = 1, nu = 1, alpha.mu = 0, alpha.V = 1000)))
+
+  # but potentially the maternal effects could also only manifest in
+  # older males, so put a six-level factor on the second variance component
+  # as well
+  prior4G.p.penetranceon2 = list(R=list(V=1,nu=0.002),
+                              G=list(G1=list(V=diag(6), nu=6, alpha.mu=c(0,0,0,0,0,0), alpha.V=diag(6)*1000),
+                                     G2=list(V=diag(6), nu=6, alpha.mu=c(0,0,0,0,0,0), alpha.V=diag(6)*1000),
+                                     G3=list(V = 1, nu = 1, alpha.mu = 0, alpha.V = 1000),
+                                     G4=list(V = 1, nu = 1, alpha.mu = 0, alpha.V = 1000)))
+  
 }
 
 
@@ -2273,6 +2356,150 @@ table(broodWE$EPO/(broodWE$EPO+broodWE$WPO))
   # age1:animal under age4 a little high. Otherwise fine.
 }
 
+{
+  # but there could also be penetrance of maternal effects.
+  # And of BirdID, but there is no repeated measure within
+  # years, so it is an across-year repeatability:
+  
+  maleh2EPO.pois.byageandmum.idh <- MCMCglmm(EPO~factor(age6),
+                                       ~idh(factor(age6)):factoranimal + 
+                                         idh(factor(age6)):factormaternalID + 
+                                         factormaleID + factoryear,
+                                       ginverse=list(factoranimal=invped.malelifetime),
+                                       prior=prior4G.p.penetranceon2,
+                                       data=maleyear,
+                                       family="poisson",
+                                       nitt=1000000,
+                                       thin=800,
+                                       burnin=200000)
+  plot(maleh2EPO.pois.byageandmum.idh)
+}
+
+
+#-------------------------------------------
+# Per year male poisson - is the maternal effect social or genetic?
+#-------------------------------------------
+
+
+{
+  # analysis to partition maternal effects in to those from the social
+  # versus the genetic mother:
+  
+  maleh2EPO.pois.twomums <- MCMCglmm(EPO~factor(age6),
+                                     ~factoranimal + factormaleID +
+                                       factormaternalID + factorSocialMumID +
+                                       factoryear,
+                                     ginverse=list(factoranimal=invped.malelifetime),
+                                     prior=prior5G.p,
+                                     data=maleyear,
+                                     family="poisson",
+                                     nitt=1000000,
+                                     thin=800,
+                                     burnin=200000)
+  plot(maleh2EPO.pois.twomums)
+}
+
+
+{
+  
+  
+  # Joel suggested tracing the matriline back to find the founding
+  # female that represents a male or female and their phenotype.
+  
+  # one way to do this is with a hash table for the males and to
+  # list the mothers of the mothers ad infinitum until they are
+  # all NA. Then collapse the hash table down to the first non-
+  # NA value:
+  
+  # create the mothers of mothers table:
+  
+  head(malephenotypes)
+  motherhash <- data.frame(BirdID = malephenotypes$maleID,
+                           Mum1 = malephenotypes$maternalID)
+  
+  summary(motherhash)
+  # 38 NAs. Plenty to work on:
+  
+  motherhash$Mum2 <- fixedsparrowped$dam[match(motherhash$Mum1,
+                                               fixedsparrowped$animal)]
+  
+  summary(motherhash)
+  # 90
+  
+  
+  motherhash$Mum3 <- fixedsparrowped$dam[match(motherhash$Mum2,
+                                               fixedsparrowped$animal)]
+  
+  summary(motherhash)
+  # 144
+  
+  
+  
+  motherhash$Mum4 <- fixedsparrowped$dam[match(motherhash$Mum3,
+                                               fixedsparrowped$animal)]
+  
+  summary(motherhash)
+  # 200
+  
+  
+  
+  motherhash$Mum5 <- fixedsparrowped$dam[match(motherhash$Mum4,
+                                               fixedsparrowped$animal)]
+  
+  summary(motherhash)
+  # 246
+  
+  
+  
+  motherhash$Mum6 <- fixedsparrowped$dam[match(motherhash$Mum5,
+                                               fixedsparrowped$animal)]
+  
+  summary(motherhash)
+  # 266
+  
+  
+  motherhash$Mum7 <- fixedsparrowped$dam[match(motherhash$Mum6,
+                                               fixedsparrowped$animal)]
+  
+  summary(motherhash)
+  # 284
+  
+  
+  motherhash$Mum8 <- fixedsparrowped$dam[match(motherhash$Mum7,
+                                               fixedsparrowped$animal)]
+  
+  summary(motherhash)
+  # 316
+  
+  
+  
+  motherhash$Mum9 <- fixedsparrowped$dam[match(motherhash$Mum8,
+                                               fixedsparrowped$animal)]
+  
+  summary(motherhash)
+  # one mother left!
+  
+  
+  motherhash$Mum10 <- fixedsparrowped$dam[match(motherhash$Mum9,
+                                                fixedsparrowped$animal)]
+  
+  
+  summary(motherhash)
+  
+  
+  motherhash$Mum11 <- fixedsparrowped$dam[match(motherhash$Mum10,
+                                                fixedsparrowped$animal)]
+  
+  
+  summary(motherhash)
+  
+  # and it is done!
+  
+  
+}
+
+
+
 #-------------------------------------------
 # Lifetime female behaviour as a multinomial variable
 #-------------------------------------------
@@ -2831,6 +3058,15 @@ plot(offspringEPO.minusdadage)
 # social parentage later using the sightings and the genetic information,
 # we tick 0 for 'SocialDadCertain' or 'SocialMumCertain' so that the parent
 # can be marked as less reliable.
+
+##############################################################################
+# Additional consideration 3: random repeatability
+##############################################################################
+
+# Jon Slate asked what the repeatability of promiscuous behaviour would be
+# in a completely randomised data set. This is to establish whether the
+# repeatability of promiscuity that we detect is a real individual effect or
+# a 
 
 
 ##############################################################################
