@@ -3066,7 +3066,85 @@ plot(offspringEPO.minusdadage)
 # Jon Slate asked what the repeatability of promiscuous behaviour would be
 # in a completely randomised data set. This is to establish whether the
 # repeatability of promiscuity that we detect is a real individual effect or
-# a 
+# an artefact.
+
+# take the male phenotypes:
+
+permute.data.males <- data.frame(EPO=maleyear$EPO)
+permute.data.males$random <- rnorm(length(permute.data.males$EPO))
+
+head(permute.data.males)
+
+permute.data.males2 <- permute.data.males[order(permute.data.males$random),]
+head(permute.data.males2)
+tail(permute.data.males2)
+
+permute.data.males2$maleid <- maleyear$maleid
+head(permute.data.males2)
+tail(permute.data.males2)
+
+permute.data.males2$factormaleID <- permute.data.males2$maleid
+
+# now run the model on the permuted data:
+{
+  maler2.permut <- MCMCglmm(EPO~1,
+                            ~factormaleID,
+                            prior=prior1G.p,
+                            data=permute.data.males2,
+                            family="poisson",
+                            nitt=100000,
+                            thin=80,
+                            burnin=20000)
+  plot(maler2.permut)
+}
+
+malerepeatability <- maler2.permut$VCV[,"factormaleID"]/
+  (maler2.permut$VCV[,"factormaleID"] +
+     maler2.permut$VCV[,"units"] +
+     log(1/exp(maler2.permut$Sol[,"(Intercept)"])+1))
+
+posterior.mode(malerepeatability)
+HPDinterval(malerepeatability)
+
+
+##############################################################################
+# Additional consideration 4: how does male repeatability change when
+# any 'floater' type males are removed?
+##############################################################################
+
+length(which(maleyear$WPO==0))
+
+maleyear.minusfloaters <- maleyear[-which(maleyear$WPO==0),]
+
+table(table(maleyear$maleid))
+
+maler2EPOpois.minusfloaters <- MCMCglmm(EPO~1,
+                          ~factormaleID,
+                          prior=prior1G.p,
+                          data=maleyear.minusfloaters,
+                          family="poisson",
+                          nitt=1000000,
+                          thin=800,
+                          burnin=200000)
+
+plot(maler2EPOpois.minusfloaters)
+plot(maler2EPOpois)
+
+
+
+malerepeatability <- maler2EPOpois$VCV[,"factormaleID"]/
+  (maler2EPOpois$VCV[,"factormaleID"] +
+     maler2EPOpois$VCV[,"units"] +
+     log(1/exp(maler2EPOpois$Sol[,"(Intercept)"])+1))
+posterior.mode(malerepeatability)
+
+
+malerepeatability2 <- maler2EPOpois.minusfloaters$VCV[,"factormaleID"]/
+  (maler2EPOpois.minusfloaters$VCV[,"factormaleID"] +
+     maler2EPOpois.minusfloaters$VCV[,"units"] +
+     log(1/exp(maler2EPOpois.minusfloaters$Sol[,"(Intercept)"])+1))
+
+posterior.mode(malerepeatability2)
 
 
 ##############################################################################
