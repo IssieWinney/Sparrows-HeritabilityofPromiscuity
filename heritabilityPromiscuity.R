@@ -684,7 +684,9 @@ table(offspring3$EPO, offspring3$WPO)
   maleyear$factorSocialMumID <- as.factor(maleyear$SocialMumID)
 }
 
-
+{
+  
+}
 
 ##############################################################################
 # female phenotypes 
@@ -1230,6 +1232,24 @@ offspring4[which((offspring4$SocialMumID==offspring4$GeneticMumID)==FALSE),]
   summary(bothsexesyear)
 }
 
+{
+  # Was either of the male or female extra-pair? i.e. are extra-pair
+  # offspring behaviourally different?
+  
+  head(bothsexesyear)
+  head(offspring3)
+  
+  bothsexesyear$EPOstatus <- offspring3$EPO[match(bothsexesyear$birdID,
+                                                  offspring3$BirdID)]
+  
+  summary(bothsexesyear$EPOstatus)
+  # quite a few missing...
+  
+  # data set without these individuals...
+  
+  bothsexes.EPOstatus <- 
+}
+
 ##############################################################################
 # Phenotype per offspring
 ##############################################################################
@@ -1286,6 +1306,22 @@ offspring4[which((offspring4$SocialMumID==offspring4$GeneticMumID)==FALSE),]
 ##############################################################################
 # Pruning the pedigree
 ##############################################################################
+
+{
+  # pedigree info
+  drawPedigree(fixedsparrowped)
+  pedigreeinformation <- pedigreeStats(fixedsparrowped)
+  #
+  #
+  #
+  #
+  #
+  #
+  #
+  #
+  pedStatSummary(pedigreeinformation)
+  
+}
 
 # each pedigree can be pruned to speed up the fitting of models.
 # Pedigrees are pruned to only contain phenotyped individuals and their
@@ -1499,6 +1535,16 @@ table(broodWE$EPO/(broodWE$EPO+broodWE$WPO))
                           G4=list(V = 1, nu = 1, alpha.mu = 0, alpha.V = 1000),
                           G5=list(V = 1, nu = 1, alpha.mu = 0, alpha.V = 1000),
                           G6=list(V = 1, nu = 1, alpha.mu = 0, alpha.V = 1000)))
+  
+  
+  prior7G.p = list(R=list(V=1,nu=0.002),
+                   G=list(G1=list(V = 1, nu = 1, alpha.mu = 0, alpha.V = 1000),
+                          G2=list(V = 1, nu = 1, alpha.mu = 0, alpha.V = 1000),
+                          G3=list(V = 1, nu = 1, alpha.mu = 0, alpha.V = 1000),
+                          G4=list(V = 1, nu = 1, alpha.mu = 0, alpha.V = 1000),
+                          G5=list(V = 1, nu = 1, alpha.mu = 0, alpha.V = 1000),
+                          G6=list(V = 1, nu = 1, alpha.mu = 0, alpha.V = 1000),
+                          G7=list(V = 1, nu = 1, alpha.mu = 0, alpha.V = 1000)))
   
   prior9G.p = list(R=list(V=1,nu=0.002),
                    G=list(G1=list(V = 1, nu = 1, alpha.mu = 0, alpha.V = 1000),
@@ -2495,7 +2541,58 @@ table(broodWE$EPO/(broodWE$EPO+broodWE$WPO))
   
   # and it is done!
   
+  for(i in 1:length(motherhash[,1])){
+  # look up which column in motherhash is the most left missing mother:
+  j <- min(which(is.na(motherhash[i,])))
   
+  # if j == 2, this is the bird and there is no matriline. Return NA:
+  
+  if(j == 2){
+    motherhash$matriline[i] <- "NA"
+    motherhash$j[i] <- j
+  } else {
+  # one before this mother is the desired matriline mum:
+    motherhash$matriline[i] <- motherhash[i,j-1]
+    motherhash$j[i] <- j
+  }
+  }
+  
+  head(motherhash)
+  tail(motherhash)
+  
+  # that looks good! :)
+  
+  # how many matrilines are there?
+  str(motherhash$matriline)
+  motherhash$matrilinenumeric <- as.numeric(motherhash$matriline)
+  length(unique(motherhash$matriline))
+  head(motherhash)
+  tail(motherhash)
+  
+  # only 24 founding mothers!!!
+  table(table(motherhash$matriline))
+  
+  # add to the maleyear data frame
+  maleyear$matriline <- motherhash$matrilinenumeric[match(maleyear$maleid,
+                                                   motherhash$BirdID)]
+  summary(maleyear$matriline)
+  
+  maleyear$factorMatriline <- maleyear$matriline
+}
+
+{
+  maleh2EPO.pois.matriline <- MCMCglmm(EPO~factor(age6),
+                                     ~factoranimal + factormaleID +
+                                       factormaternalID + factorMatriline +
+                                       factoryear,
+                                     ginverse=list(factoranimal=invped.malelifetime),
+                                     prior=prior5G.p,
+                                     data=maleyear,
+                                     family="poisson",
+                                     nitt=1000000,
+                                     thin=800,
+                                     burnin=200000)
+  plot(maleh2EPO.pois.matriline)
 }
 
 
@@ -2884,6 +2981,49 @@ summary(broodWE.fullmums)
   # for females, and I have to work on the per year level for females to
   # have sufficient variation.
 }
+
+
+broodEPO.nogenetics <- MCMCglmm(cbind(EPO, WPO)~1,
+                                           random=~factormaternalID + factorDadmaternalID + 
+                                             factorfemaleID + factorDadID + factoryear +
+                                             factorpairMaternal + factorpairID,
+                                           family="multinomial2",
+                                           prior=prior7G.p,
+                                           ginverse=list(factoranimal=invped.bothsexes.fullmums,
+                                                         factordadanimal=invped.bothsexes.fullmums),
+                                           data=broodWE.fullmums,
+                                           nitt=100000,
+                                           thin=80,
+                                           burnin=20000)
+
+plot(broodEPO.nogenetics)
+
+
+broodEPO.nogenetics.pair.dad <- MCMCglmm(cbind(EPO, WPO)~1,
+                                random=~factorfemaleID + factoryear + 
+                                  factorDadID + factorpairID,
+                                family="multinomial2",
+                                prior=prior4G.p,
+                                ginverse=list(factoranimal=invped.bothsexes.fullmums,
+                                              factordadanimal=invped.bothsexes.fullmums),
+                                data=broodWE.fullmums,
+                                nitt=1000000,
+                                thin=800,
+                                burnin=200000)
+
+plot(broodEPO.nogenetics.pair.dad)
+
+broodEPO.nogenetics.pair <- MCMCglmm(cbind(EPO, WPO)~1,
+                                     random=~factorfemaleID + factoryear + 
+                                       factorpairID,
+                                     family="multinomial2",
+                                     prior=prior3G.p,
+                                     ginverse=list(factoranimal=invped.bothsexes.fullmums,
+                                                   factordadanimal=invped.bothsexes.fullmums),
+                                     data=broodWE.fullmums,
+                                     nitt=100000,
+                                     thin=80,
+                                     burnin=20000)
 
 ##############################################################################
 # Bivariate model: genetic or phenotypic covariance between male and female
