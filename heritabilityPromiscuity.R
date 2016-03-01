@@ -109,10 +109,66 @@ tail(sparrowped)
 # loading the Lundy House Sparrow Database
 ##############################################################################
 
-sparrowDB <- odbcConnectAccess('C:/Users/Issie/SkyDrive/PhD/SparrowDatabases/Database0.74_12Oct2015GenotypesUpdatedBMSBNS/SparrowDatabase0.74_Issie.mdb')
+sparrowDB <- odbcConnectAccess('C:/Users/Issie/SkyDrive/PhD/SparrowDatabases/Database0.74_Jan2016GTUpToSummer2015Imported-upd20160205/SparrowDatabase0.74.mdb')
 
 # view tables within the database
 sqlTables(sparrowDB)
+
+# now extract data for checking the pedigree: cohort data,
+# sex data.
+
+##############################################################################
+# cohort data and sex data and last stage data
+##############################################################################
+
+# extract the list of cohorts and Bird IDs
+
+{
+  sqlFetch(sparrowDB, "tblBirdID", max=10)
+  
+  birdcohort <- sqlQuery (sparrowDB,
+                          "SELECT tblBirdID.BirdID, 
+                          tblBirdID.Cohort,
+                          tblBirdID.LastStage
+                          FROM tblBirdID;",
+                          na.strings="NA")
+  
+  head(birdcohort)
+  summary(birdcohort)
+  # a missing cohort???
+  birdcohort[which(is.na(birdcohort$Cohort)),]
+  # this is a blank record from my last year :s
+  # rest of the data seems fine
+}
+
+
+
+{
+  sqlFetch(sparrowDB, "tblBirdID", max=10)
+  
+  sexestimates <- sqlQuery (sparrowDB,
+                          "SELECT tblBirdID.BirdID, 
+                          tblBirdID.Cohort,
+                          sys_SexEstimates.SexEstimate
+                          FROM tblBirdID, sys_SexEstimates;",
+                          na.strings="NA")
+  
+  head(birdcohort)
+  summary(birdcohort)
+  # a missing cohort???
+  birdcohort[which(is.na(birdcohort$Cohort)),]
+  # this is a blank record from my last year :s
+  # rest of the data seems fine
+}
+
+
+
+##############################################################################
+# Checking the pedigree
+##############################################################################
+
+# how many 
+
 
 
 ##############################################################################
@@ -247,30 +303,6 @@ offspring3$EPO <- ifelse(offspring3$SocialDadID!=offspring3$GeneticDadID,
 table(offspring3$EPO, offspring3$WPO)
 
 # 856 EPO. 4011 WPO. None identified as both. Good!
-}
-
-
-##############################################################################
-# cohort data
-##############################################################################
-
-# extract the list of cohorts and Bird IDs
-
-{
-  sqlFetch(sparrowDB, "tblBirdID", max=10)
-
-  birdcohort <- sqlQuery (sparrowDB,
-                       "SELECT tblBirdID.BirdID, 
-                       tblBirdID.Cohort
-                       FROM tblBirdID;",
-                      na.strings="NA")
-  
-  head(birdcohort)
-  summary(birdcohort)
-  # a missing cohort???
-  birdcohort[which(is.na(birdcohort$Cohort)),]
-  # this is a blank record from my last year :s
-  # rest of the data seems fine
 }
 
 
@@ -1247,7 +1279,8 @@ offspring4[which((offspring4$SocialMumID==offspring4$GeneticMumID)==FALSE),]
   
   # data set without these individuals...
   
-  bothsexes.EPOstatus <- 
+  bothsexes.EPOstatus <- bothsexesyear[-which(is.na(bothsexesyear$EPOstatus)),]
+  summary(bothsexes.EPOstatus)
 }
 
 ##############################################################################
@@ -3067,6 +3100,13 @@ broodEPO.nogenetics.pair <- MCMCglmm(cbind(EPO, WPO)~1,
                                     alpha.mu=c(0,0), alpha.V=diag(2)*1000),
                             G4=list(V=1, nu=1, alpha.mu=0, alpha.V=1000)))
   
+  priorbiv3.p <- list(R=list(V=diag(2), nu=0.002),
+                      G=list(G1=list(V=diag(2), nu=2, 
+                                     alpha.mu=c(0,0), alpha.V=diag(2)*1000),
+                             G2=list(V=diag(2), nu=2, 
+                                     alpha.mu=c(0,0), alpha.V=diag(2)*1000),
+                             G3=list(V=1, nu=1, alpha.mu=0, alpha.V=1000)))
+  
   bothsexesyear$age <- bothsexesyear$maleage
   bothsexesyear$age[is.na(bothsexesyear$age)] <- 1
   bothsexesyear$age
@@ -3286,6 +3326,50 @@ malerepeatability2 <- maler2EPOpois.minusfloaters$VCV[,"factormaleID"]/
 
 posterior.mode(malerepeatability2)
 
+##############################################################################
+# Additional consideration 5: are EPO offspring more likely to be promiscuous?
+##############################################################################
+
+# Add the EPO status of the male or female as a fixed factor to the
+# model:
+
+{
+  bivariateEPO.parentEPO <- MCMCglmm(cbind(EPOm, cbind(EPOf,WPOf))~trait +
+                             factor(age) + trait:factor(EPOstatus),
+                           random=~us(trait):animal + idh(trait):birdID +
+                             us(trait):maternalID + year,
+                           rcov=~idh(trait):units,
+                           family=c("poisson", "multinomial2"),
+                           prior=priorbiv4.p,
+                           ginverse=list(animal=invped.bothsexesyear),
+                           data=bothsexes.EPOstatus,
+                           nitt=1000000,
+                           thin=800,
+                           burnin=200000)
+  
+  plot(bivariateEPO.parentEPO)
+}
+
+# We know there is no detectable genetic background to either trait,
+# so it makes sense to try the same model without the animal term to
+# see how the other variance components could change.
+
+{
+  bivariateEPO.parentEPO.nogenetics <- MCMCglmm(cbind(EPOm, cbind(EPOf,WPOf))~trait +
+                                       factor(age) + trait:factor(EPOstatus),
+                                     random=~idh(trait):birdID +
+                                       us(trait):maternalID + year,
+                                     rcov=~idh(trait):units,
+                                     family=c("poisson", "multinomial2"),
+                                     prior=priorbiv3.p,
+                                     data=bothsexes.EPOstatus,
+                                     nitt=1000000,
+                                     thin=800,
+                                     burnin=200000)
+  
+  plot(bivariateEPO.parentEPO.nogenetics)
+  # that really doesn't make sense.
+}
 
 ##############################################################################
 # Issues
