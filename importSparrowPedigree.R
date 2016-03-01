@@ -65,18 +65,22 @@ unique(sparrowpedigree$Cohort)
 
 # do any individuals turn up in both the sire and dam columns:
 unique(sparrowpedigree$sire[match(sparrowpedigree$dam, sparrowpedigree$sire)])
-# 4975 occurs as both a dam and a sire.
+# 4975 occurs as both a dam and a sire, but is the only one.
+
 
 ##############################################################################
 # Metadata
 ##############################################################################
 
-# birdid      the numerical identity of the bird, the same as the numerical ID
+# id          the numerical identity of the bird, the same as the numerical ID
 #             in the database (BirdID)
 # dam         the genetic mother as assigned by microsatellite data (ID is her 
 #             BirdID in the database)
 # sire        the genetic father as assigned by microsatellite data (ID is his 
 #             BirdID in the database)
+# Immigrant   Is this bird an immigrant to the Lundy population (1 for immigrant)
+
+# for my personal pedigrees using ASReml-R:
 # asrid       birdid but with birds numbered (nearly) consecutively. This is here for
 #             analyses with ASReml-R which used to complain that BirdID had 
 #             numbers missing from the sequence
