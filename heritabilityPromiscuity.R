@@ -125,12 +125,16 @@ sqlTables(sparrowDB)
 
 {
   sqlFetch(sparrowDB, "tblBirdID", max=10)
+  sqlFetch(sparrowDB, "sys_SexEstimates", max=10)
   
   birdcohort <- sqlQuery (sparrowDB,
                           "SELECT tblBirdID.BirdID, 
-                          tblBirdID.Cohort,
-                          tblBirdID.LastStage
-                          FROM tblBirdID;",
+                                  tblBirdID.Cohort, 
+                                  tblBirdID.LastStage, 
+                                  sys_SexEstimates.SexEstimate
+                          FROM tblBirdID
+                          INNER JOIN sys_SexEstimates 
+                          ON tblBirdID.BirdID = sys_SexEstimates.BirdID;",
                           na.strings="NA")
   
   head(birdcohort)
@@ -139,6 +143,13 @@ sqlTables(sparrowDB)
   birdcohort[which(is.na(birdcohort$Cohort)),]
   # this is a blank record from my last year :s
   # rest of the data seems fine
+  
+  # Three birds do not have LastStage
+  birdcohort[which(is.na(birdcohort$LastStage)),]
+  # one of these is 7230, the other two (5052 and 5655) need correcting.
+  
+  length(birdcohort[,1])
+  
 }
 
 
