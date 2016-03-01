@@ -6,8 +6,9 @@
 # 20160115
 # This is the file to import the Lundy house sparrow pedigree to a 
 # project. The pedigree is updated every one to two years and the
-# pedigree import procedure changes accordingly:
+# pedigree import procedure changes accordingly.
 
+# This is for the pedigree up to and including 2015 data.
 
 ##############################################################################
 # Manual changes to pedigree file
@@ -42,17 +43,29 @@
 ##############################################################################
 
 # read in the pedigree file:
-sparrowpedigree <- read.table("C:/Users/Issie/SkyDrive/PhD/masterdatasheets/DraftPedjuly2015-1995-2013.txt",
+sparrowpedigree <- read.table("C:/Users/Issie/SkyDrive/PhD/masterdatasheets/Pedigreeto2015-20160201.txt",
                    header=T, na.strings="NA")
 
+# Manual additions:
+# Find all blank cells and replace with NA.
 
-# add birds 5644, 7641 and 7649:
-sparrowpedigree[length(sparrowpedigree[,1])+1,] <- c(5644, NA, NA, 2010, 6070, NA, NA)
-sparrowpedigree[length(sparrowpedigree[,1])+1,] <- c(7641, NA, NA, 2013, 6071, NA, NA)
-sparrowpedigree[length(sparrowpedigree[,1])+1,] <- c(7649, NA, NA, 2013, 6072, NA, NA)
+# check the birds that were missing in the 2013 version are
+# present in this version:
+which(sparrowpedigree$id==5644)
+which(sparrowpedigree$id==7641)
+which(sparrowpedigree$id==7649)
+
 
 head(sparrowpedigree)
 tail(sparrowpedigree)
+str(sparrowpedigree)
+
+# are there any unusual cohorts:
+unique(sparrowpedigree$Cohort)
+
+# do any individuals turn up in both the sire and dam columns:
+unique(sparrowpedigree$sire[match(sparrowpedigree$dam, sparrowpedigree$sire)])
+# 4975 occurs as both a dam and a sire.
 
 ##############################################################################
 # Metadata
