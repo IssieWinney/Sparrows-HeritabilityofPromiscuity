@@ -131,7 +131,9 @@ sqlTables(sparrowDB)
                           "SELECT tblBirdID.BirdID, 
                                   tblBirdID.Cohort, 
                                   tblBirdID.LastStage, 
-                                  sys_SexEstimates.SexEstimate
+                                  sys_SexEstimates.SexEstimate, 
+                                  tblBirdID.DeathDate,
+                                  tblBirdID.BroodRef
                           FROM tblBirdID
                           INNER JOIN sys_SexEstimates 
                           ON tblBirdID.BirdID = sys_SexEstimates.BirdID;",
@@ -152,35 +154,150 @@ sqlTables(sparrowDB)
   
 }
 
-
-
 {
-  sqlFetch(sparrowDB, "tblBirdID", max=10)
-  
-  sexestimates <- sqlQuery (sparrowDB,
-                          "SELECT tblBirdID.BirdID, 
-                          tblBirdID.Cohort,
-                          sys_SexEstimates.SexEstimate
-                          FROM tblBirdID, sys_SexEstimates;",
+  # I cannot use the LastStage in the tblBirdID because this is
+  # updated with pedigree information and sightings information.
+  # Therefore everything observed as a parent in the pedigree
+  # will have LastStage == 3.
+  # I will instead try the last stage as capture. No parent should
+  # have been an egg or chigg that was never captured alive.
+  laststage <- sqlQuery (sparrowDB,
+                          "SELECT tblCaptures.BirdID, 
+                                  Max(tblCaptures.Stage) AS MaxOfStage
+                          FROM tblCaptures
+                          GROUP BY tblCaptures.BirdID;",
                           na.strings="NA")
   
-  head(birdcohort)
-  summary(birdcohort)
-  # a missing cohort???
-  birdcohort[which(is.na(birdcohort$Cohort)),]
-  # this is a blank record from my last year :s
-  # rest of the data seems fine
+  head(laststage)
 }
 
-
+{
+  # and lastly to pull out the first egg date of each brood
+  # so that I can check that each genetic parent was alive at
+  # the time of siring the offspring.
+  # Doesn't have to be biologically true, it is a guideline
+  # for which individuals to check. For example, females could
+  # store sperm for a couple of weeks.
+  
+  firstegg <- sqlQuery (sparrowDB,
+                         "SELECT  tblBroods.BroodRef, 
+                                  tblBroodEvents.EventNumber, 
+                                  tblBroodEvents.EventDate
+                          FROM tblBroods 
+                          INNER JOIN tblBroodEvents 
+                          ON tblBroods.BroodRef = tblBroodEvents.BroodRef
+                          WHERE (((tblBroodEvents.EventNumber)=0))
+                          ORDER BY tblBroods.BroodRef;",
+                         na.strings="NA")
+  
+  head(firstegg)
+}
 
 ##############################################################################
 # Checking the pedigree
 ##############################################################################
 
-# how many 
+# how many parents have a LastStage ==1 or 0?
+
+dams <- data.frame(BirdID = unique(sparrowpedigree$dam),
+                   dam=1)
+head(dams)
+
+sires <- data.frame(BirdID = unique(sparrowpedigree$sire),
+                    sire=1)
+head(sires)
+
+damcheck <- merge(dams, laststage, by="BirdID", 
+                  all.x=TRUE, incomparables = NA)
+
+sirecheck <- merge(sires, laststage, by="BirdID", 
+                  all.x=TRUE, incomparables = NA)
+
+head(damcheck)
+tail(damcheck)
+head(sirecheck)
+tail(sirecheck)
+
+# now which are =<1
+which(damcheck$LastStage<2)
+which(sirecheck$LastStage<2)
+# well that didn't work. Probably because the last stage is
+# also from the pedigree so use my other data set of maximum
+# last stage from capture:
 
 
+damcheck <- merge(dams, laststage, by="BirdID", 
+                  all.x=TRUE, incomparables = NA)
+
+sirecheck <- merge(sires, laststage, by="BirdID", 
+                   all.x=TRUE, incomparables = NA)
+
+head(damcheck)
+tail(damcheck)
+head(sirecheck)
+tail(sirecheck)
+
+# now which are =<1
+which(damcheck$LastStage<2)
+which(sirecheck$LastStage<2)
+# ok. All last stages are >=2
+
+
+# how many pedigree cohorts and database cohorts are different?
+
+# re-name the pedigree to have the same birdID column and
+# distinct cohort column from the birdcohort data set:
+names(sparrowpedigree) <- c("BirdID", "dam", "sire", 
+                            "CohortPedigree", "Immigrant")
+head(sparrowpedigree)
+
+pedcheck <- merge(sparrowpedigree, birdcohort, by="BirdID", all.x=TRUE)
+
+head(pedcheck)
+tail(pedcheck)
+
+summary(pedcheck$CohortPedigree - pedcheck$Cohort)
+table(pedcheck$CohortPedigree - pedcheck$Cohort)
+# two NAs, 62 different cohorts.
+pedcheck[which(pedcheck$CohortPedigree - pedcheck$Cohort !=0),]
+
+
+
+# lastly, are there any zombie parents?
+# fill in the hatch date for the individuals:
+pedcheck.hatched <- merge(pedcheck, firstegg, by="BroodRef", 
+                    all.x=TRUE, incomparables = NA)
+
+head(pedcheck.hatched)
+tail(pedcheck.hatched)
+table(pedcheck.hatched$BroodRef)
+
+# and add the death date of the parents:
+pedcheck.hatched$damdeath <- birdcohort$DeathDate[match(pedcheck.hatched$dam,
+                                                birdcohort$BirdID)]
+
+pedcheck.hatched$siredeath <- birdcohort$DeathDate[match(pedcheck.hatched$sire,
+                                                birdcohort$BirdID)]
+
+head(pedcheck.hatched)
+pedcheck.hatched$damdeath
+pedcheck.hatched$siredeath
+
+# all dates of death should be after broods were started.
+# That means all these numbers should be negative:
+table(pedcheck.hatched$EventDate - pedcheck.hatched$damdeath)
+table(pedcheck.hatched$EventDate - pedcheck.hatched$siredeath)
+
+# but there are some positive dates for males, i.e. males that
+# died before they became fathers:
+pedcheck.hatched$siredeathdif <- pedcheck.hatched$EventDate - pedcheck.hatched$siredeath
+which(pedcheck.hatched$siredeathdif >0)
+pedcheck.hatched[which(pedcheck$siredeathdif >0),]
+
+# most of these are 1192, which is reassuring.
+# The others, I can believe 3394 was a father 2 days later.
+# 35 days is a stretch.
+# so double check the fathers for 3797, 3926, 5426, 5429, 5634.
 
 ##############################################################################
 # offspring data
