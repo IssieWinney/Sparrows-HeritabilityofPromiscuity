@@ -109,7 +109,7 @@ tail(sparrowped)
 # loading the Lundy House Sparrow Database
 ##############################################################################
 
-sparrowDB <- odbcConnectAccess('C:/Users/Issie/SkyDrive/PhD/SparrowDatabases/Database0.74_Jan2016GTUpToSummer2015Imported-upd20160205/SparrowDatabase0.74.mdb')
+sparrowDB <- odbcConnectAccess('C:/Users/Issie/SkyDrive/PhD/SparrowDatabases/Database0.74_20160304_1900-MI/SparrowDatabase0.74.mdb')
 
 # view tables within the database
 sqlTables(sparrowDB)
@@ -198,106 +198,132 @@ sqlTables(sparrowDB)
 ##############################################################################
 
 # how many parents have a LastStage ==1 or 0?
-
-dams <- data.frame(BirdID = unique(sparrowpedigree$dam),
-                   dam=1)
-head(dams)
-
-sires <- data.frame(BirdID = unique(sparrowpedigree$sire),
-                    sire=1)
-head(sires)
-
-damcheck <- merge(dams, laststage, by="BirdID", 
-                  all.x=TRUE, incomparables = NA)
-
-sirecheck <- merge(sires, laststage, by="BirdID", 
-                  all.x=TRUE, incomparables = NA)
-
-head(damcheck)
-tail(damcheck)
-head(sirecheck)
-tail(sirecheck)
-
-# now which are =<1
-which(damcheck$LastStage<2)
-which(sirecheck$LastStage<2)
-# well that didn't work. Probably because the last stage is
-# also from the pedigree so use my other data set of maximum
-# last stage from capture:
-
-
-damcheck <- merge(dams, laststage, by="BirdID", 
-                  all.x=TRUE, incomparables = NA)
-
-sirecheck <- merge(sires, laststage, by="BirdID", 
-                   all.x=TRUE, incomparables = NA)
-
-head(damcheck)
-tail(damcheck)
-head(sirecheck)
-tail(sirecheck)
-
-# now which are =<1
-which(damcheck$LastStage<2)
-which(sirecheck$LastStage<2)
-# ok. All last stages are >=2
+{
+  dams <- data.frame(BirdID = unique(sparrowpedigree$dam),
+                     dam=1)
+  head(dams)
+  
+  sires <- data.frame(BirdID = unique(sparrowpedigree$sire),
+                      sire=1)
+  head(sires)
+  
+  damcheck <- merge(dams, laststage, by="BirdID", 
+                    all.x=TRUE, incomparables = NA)
+  
+  sirecheck <- merge(sires, laststage, by="BirdID", 
+                     all.x=TRUE, incomparables = NA)
+  
+  head(damcheck)
+  tail(damcheck)
+  head(sirecheck)
+  tail(sirecheck)
+  
+  # now which are =<1
+  which(damcheck$LastStage<2)
+  which(sirecheck$LastStage<2)
+  # well that didn't work. Probably because the last stage is
+  # also from the pedigree so use my other data set of maximum
+  # last stage from capture:
+  
+  
+  damcheck <- merge(dams, laststage, by="BirdID", 
+                    all.x=TRUE, incomparables = NA)
+  
+  sirecheck <- merge(sires, laststage, by="BirdID", 
+                     all.x=TRUE, incomparables = NA)
+  
+  head(damcheck)
+  tail(damcheck)
+  head(sirecheck)
+  tail(sirecheck)
+  
+  # now which are =<1
+  which(damcheck$LastStage<2)
+  which(sirecheck$LastStage<2)
+  # ok. All last stages are >=2
+} # nothing to change
 
 
 # how many pedigree cohorts and database cohorts are different?
+{
+  # re-name the pedigree to have the same birdID column and
+  # distinct cohort column from the birdcohort data set:
+  names(sparrowpedigree) <- c("BirdID", "dam", "sire", 
+                              "CohortPedigree", "Immigrant")
+  head(sparrowpedigree)
+  
+  pedcheck <- merge(sparrowpedigree, birdcohort, by="BirdID", all.x=TRUE)
+  
+  head(pedcheck)
+  tail(pedcheck)
+  
+  summary(pedcheck$CohortPedigree - pedcheck$Cohort)
+  table(pedcheck$CohortPedigree - pedcheck$Cohort)
+  # two NAs, 62 different cohorts.
+  pedcheck[which(pedcheck$CohortPedigree - pedcheck$Cohort !=0),1:6]
+}
+# this needs looking at:
+pedcheck[which(pedcheck$CohortPedigree - pedcheck$Cohort !=0),1:6]
 
-# re-name the pedigree to have the same birdID column and
-# distinct cohort column from the birdcohort data set:
-names(sparrowpedigree) <- c("BirdID", "dam", "sire", 
-                            "CohortPedigree", "Immigrant")
-head(sparrowpedigree)
 
-pedcheck <- merge(sparrowpedigree, birdcohort, by="BirdID", all.x=TRUE)
-
-head(pedcheck)
-tail(pedcheck)
-
-summary(pedcheck$CohortPedigree - pedcheck$Cohort)
-table(pedcheck$CohortPedigree - pedcheck$Cohort)
-# two NAs, 62 different cohorts.
-pedcheck[which(pedcheck$CohortPedigree - pedcheck$Cohort !=0),]
-
+# are any dams male? Are any sires female?
+{
+  pedcheck$damsex <- birdcohort$SexEstimate[match(pedcheck$dam,
+                                                  birdcohort$BirdID)]
+  
+  head(pedcheck)
+  summary(pedcheck$damsex)
+  
+  pedcheck$siresex <- birdcohort$SexEstimate[match(pedcheck$sire,
+                                                   birdcohort$BirdID)]
+  
+  summary(pedcheck$siresex)
+  # oops.
+  which(pedcheck$siresex==0)
+  # only one!
+  pedcheck[which(pedcheck$siresex==0),]
+}
+# one male is female:
+pedcheck[which(pedcheck$siresex==0),]
 
 
 # lastly, are there any zombie parents?
-# fill in the hatch date for the individuals:
-pedcheck.hatched <- merge(pedcheck, firstegg, by="BroodRef", 
-                    all.x=TRUE, incomparables = NA)
-
-head(pedcheck.hatched)
-tail(pedcheck.hatched)
-table(pedcheck.hatched$BroodRef)
-
-# and add the death date of the parents:
-pedcheck.hatched$damdeath <- birdcohort$DeathDate[match(pedcheck.hatched$dam,
-                                                birdcohort$BirdID)]
-
-pedcheck.hatched$siredeath <- birdcohort$DeathDate[match(pedcheck.hatched$sire,
-                                                birdcohort$BirdID)]
-
-head(pedcheck.hatched)
-pedcheck.hatched$damdeath
-pedcheck.hatched$siredeath
-
-# all dates of death should be after broods were started.
-# That means all these numbers should be negative:
-table(pedcheck.hatched$EventDate - pedcheck.hatched$damdeath)
-table(pedcheck.hatched$EventDate - pedcheck.hatched$siredeath)
-
-# but there are some positive dates for males, i.e. males that
-# died before they became fathers:
-pedcheck.hatched$siredeathdif <- pedcheck.hatched$EventDate - pedcheck.hatched$siredeath
-which(pedcheck.hatched$siredeathdif >0)
-pedcheck.hatched[which(pedcheck$siredeathdif >0),]
-
+{
+  # fill in the hatch date for the individuals:
+  pedcheck.hatched <- merge(pedcheck, firstegg, by="BroodRef", 
+                            all.x=TRUE, incomparables = NA)
+  
+  head(pedcheck.hatched)
+  tail(pedcheck.hatched)
+  table(pedcheck.hatched$BroodRef)
+  
+  # and add the death date of the parents:
+  pedcheck.hatched$damdeath <- birdcohort$DeathDate[match(pedcheck.hatched$dam,
+                                                          birdcohort$BirdID)]
+  
+  pedcheck.hatched$siredeath <- birdcohort$DeathDate[match(pedcheck.hatched$sire,
+                                                           birdcohort$BirdID)]
+  
+  head(pedcheck.hatched)
+  pedcheck.hatched$damdeath
+  pedcheck.hatched$siredeath
+  
+  # all dates of death should be after broods were started.
+  # That means all these numbers should be negative:
+  table(pedcheck.hatched$EventDate - pedcheck.hatched$damdeath)
+  table(pedcheck.hatched$EventDate - pedcheck.hatched$siredeath)
+  
+  # but there are some positive dates for males, i.e. males that
+  # died before they became fathers:
+  pedcheck.hatched$siredeathdif <- pedcheck.hatched$EventDate - pedcheck.hatched$siredeath
+  which(pedcheck.hatched$siredeathdif >0)
+  pedcheck.hatched[which(pedcheck.hatched$siredeathdif >0),]
+}
 # most of these are 1192, which is reassuring.
 # The others, I can believe 3394 was a father 2 days later.
 # 35 days is a stretch.
 # so double check the fathers for 3797, 3926, 5426, 5429, 5634.
+pedcheck.hatched[which(pedcheck$siredeathdif >0),]
 
 ##############################################################################
 # offspring data
@@ -381,10 +407,10 @@ which(offspring$SocialDadCertain==0)
 # be assigned a status as extra-pair offspring or within-pair (EPO or WPO):
 
 offspring$GeneticDadID <- sparrowped$sire[match(offspring$BirdID, 
-                                                sparrowped$birdid)]
+                                                sparrowped$id)]
 
 offspring$GeneticMumID <- sparrowped$dam[match(offspring$BirdID,
-                                               sparrowped$birdid)]
+                                               sparrowped$id)]
 
 head(offspring)
 tail(offspring)
@@ -568,7 +594,7 @@ table(offspring3$EPO, offspring3$WPO)
   # alive will be defined as the last time seen in the GENETIC PEDIGREE.
   
   # so, find the maximum cohort for a given sire in the pedigree:
-  malelifespan <- aggregate(sparrowpedigree$cohort, 
+  malelifespan <- aggregate(sparrowpedigree$CohortPedigree, 
                            list(sparrowpedigree$sire),
                            FUN=max)
   
@@ -844,9 +870,6 @@ table(offspring3$EPO, offspring3$WPO)
   maleyear$factorSocialMumID <- as.factor(maleyear$SocialMumID)
 }
 
-{
-  
-}
 
 ##############################################################################
 # female phenotypes 
@@ -964,7 +987,7 @@ table(offspring3$EPO, offspring3$WPO)
   # alive will be defined as the last time seen in the GENETIC PEDIGREE.
   
   # so, find the maximum cohort for a given dam in the pedigree:
-  femalelifespan <- aggregate(sparrowpedigree$cohort, 
+  femalelifespan <- aggregate(sparrowpedigree$CohortPedigree, 
                             list(sparrowpedigree$dam),
                             FUN=max)
   
@@ -1654,6 +1677,13 @@ table(broodWE$EPO/(broodWE$EPO+broodWE$WPO))
   table(offspring4$femalephenotype, offspring4$malephenotype)[1,]
   # there are 204 zero-zero values. Out of over 3k, that is
   # good.
+}
+
+# how many EPP per year?
+{
+  barplot(table(offspring4$EPO, offspring4$Cohort)[2,]/
+    (table(offspring4$EPO, offspring4$Cohort)[2,]+table(offspring4$EPO, offspring4$Cohort)[1,]),
+    ylim=c(0,0.3))
 }
 
 
