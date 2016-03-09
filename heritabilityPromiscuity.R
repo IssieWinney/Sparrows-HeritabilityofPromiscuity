@@ -109,7 +109,7 @@ tail(sparrowped)
 # loading the Lundy House Sparrow Database
 ##############################################################################
 
-sparrowDB <- odbcConnectAccess('C:/Users/Issie/SkyDrive/PhD/SparrowDatabases/Database0.74_20160304_1900-MI/SparrowDatabase0.74.mdb')
+sparrowDB <- odbcConnectAccess('C:/Users/Issie/SkyDrive/PhD/SparrowDatabases/Database0.74_20160306-ISW/SparrowDatabase0.74.mdb')
 
 # view tables within the database
 sqlTables(sparrowDB)
@@ -163,7 +163,8 @@ sqlTables(sparrowDB)
   # have been an egg or chigg that was never captured alive.
   laststage <- sqlQuery (sparrowDB,
                           "SELECT tblCaptures.BirdID, 
-                                  Max(tblCaptures.Stage) AS MaxOfStage
+                                  Max(tblCaptures.Stage) AS MaxOfStage,
+                                  Min(tblCaptures.Stage) AS MinOfStage
                           FROM tblCaptures
                           GROUP BY tblCaptures.BirdID;",
                           na.strings="NA")
@@ -324,6 +325,29 @@ pedcheck[which(pedcheck$siresex==0),]
 # 35 days is a stretch.
 # so double check the fathers for 3797, 3926, 5426, 5429, 5634.
 pedcheck.hatched[which(pedcheck$siredeathdif >0),]
+
+
+{
+  # how many nestlings in the pedigree do not have assigned parents:
+  sparrowpedigree$laststage <- laststage$MaxOfStage[match(sparrowpedigree$BirdID,
+                                                          laststage$BirdID)]
+  
+  sparrowpedigree$firststage <- laststage$MinOfStage[match(sparrowpedigree$BirdID,
+                                                          laststage$BirdID)]
+  
+  
+  nestlings <- subset(sparrowpedigree, sparrowpedigree$firststage<3)
+  
+  summary(nestlings)
+  table(nestlings$laststage)
+  # how many eggs do not have one or both parents missing:
+  length(which(paste(nestlings$laststage, nestlings$dam)=="0 NA"))
+  length(which(paste(nestlings$laststage, nestlings$sire)=="0 NA"))
+  length(which(paste(nestlings$laststage, nestlings$dam, nestlings$sire)=="0 NA NA"))
+  length(nestlings[,1])
+  length(which(is.na(nestlings$dam)))
+  length(which(is.na(nestlings$sire)))
+}
 
 ##############################################################################
 # offspring data
