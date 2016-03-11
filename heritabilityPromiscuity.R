@@ -141,14 +141,8 @@ sqlTables(sparrowDB)
   
   head(birdcohort)
   summary(birdcohort)
-  # a missing cohort???
-  birdcohort[which(is.na(birdcohort$Cohort)),]
-  # this is a blank record from my last year :s
-  # rest of the data seems fine
-  
-  # Three birds do not have LastStage
-  birdcohort[which(is.na(birdcohort$LastStage)),]
-  # one of these is 7230, the other two (5052 and 5655) need correcting.
+  # no missing cohorts
+  # no missing last stage
   
   length(birdcohort[,1])
   
@@ -260,7 +254,7 @@ sqlTables(sparrowDB)
   
   summary(pedcheck$CohortPedigree - pedcheck$Cohort)
   table(pedcheck$CohortPedigree - pedcheck$Cohort)
-  # two NAs, 62 different cohorts.
+  # two NAs, 58 different cohorts.
   pedcheck[which(pedcheck$CohortPedigree - pedcheck$Cohort !=0),1:6]
 }
 # this needs looking at:
@@ -283,9 +277,8 @@ pedcheck[which(pedcheck$CohortPedigree - pedcheck$Cohort !=0),1:6]
   which(pedcheck$siresex==0)
   # only one!
   pedcheck[which(pedcheck$siresex==0),]
+  # so this one male is actually female
 }
-# one male is female:
-pedcheck[which(pedcheck$siresex==0),]
 
 
 # lastly, are there any zombie parents?
@@ -324,7 +317,6 @@ pedcheck[which(pedcheck$siresex==0),]
 # The others, I can believe 3394 was a father 2 days later.
 # 35 days is a stretch.
 # so double check the fathers for 3797, 3926, 5426, 5429, 5634.
-pedcheck.hatched[which(pedcheck$siredeathdif >0),]
 
 
 {
@@ -340,7 +332,8 @@ pedcheck.hatched[which(pedcheck$siredeathdif >0),]
   
   summary(nestlings)
   table(nestlings$laststage)
-  # how many eggs do not have one or both parents missing:
+  
+  # how many eggs have one or both parents missing:
   length(which(paste(nestlings$laststage, nestlings$dam)=="0 NA"))
   length(which(paste(nestlings$laststage, nestlings$sire)=="0 NA"))
   length(which(paste(nestlings$laststage, nestlings$dam, nestlings$sire)=="0 NA NA"))
@@ -355,9 +348,8 @@ pedcheck.hatched[which(pedcheck$siredeathdif >0),]
 
 # Assumptions:
 # 1   males are all dead --> the calculated phenotypes
-#     are complete. This is not true but can be reconsidered later
-#     later.
-# 2   the 2013 pedigree is ok.
+#     are complete. This is not true but can be reconsidered later.
+# 2   the 2015 pedigree is good.
 # 3   a brood has just one genetic mother. By looking
 #     up the genetic mother of a brood, the mother that is
 #     returned first is the one used in the analysis below. 
@@ -368,21 +360,8 @@ pedcheck.hatched[which(pedcheck$siredeathdif >0),]
 # 5   All cohorts in the database are accurate (not true)
 
 
-# I have made a list using the database from March 2015
-# database called DataBaseV0.74-updated20150320-AlfredoCheckedMarch2015
-# of all the birds associated with a brood, their cohorts,
-# their broods, their parents.
-# This was called birdbroodcohortparent-to2014-20150910.txt
-# and now I am directly calling the database to extract the
-# same data instead.
-
-# This means that my measure of EPO and WPO totals is only
-# based on these offspring and all the offspring that are
-# caught in the winter etc I ignore.
-
-# This is the Git version of an existing script in which I explored
-# how to make the data and use the sparrow data set for an analysis
-# of this.
+# In the past I used text files of data downloaded from the database,
+# now I am calling the database directly.
 
 #-------------------------------------------
 # Load offspring data from database
@@ -413,7 +392,7 @@ table(offspring$SocialDadCertain,
       offspring$SocialMumCertain)
 
 
-# In 6433 cases out of 7628 I know both. That presumably includes
+# In 6468 cases out of 7628 I know both. That presumably includes
 # cases where the parent was not known, rather than not certain
 
 which(is.na(offspring$SocialDadID))
@@ -439,12 +418,9 @@ offspring$GeneticMumID <- sparrowped$dam[match(offspring$BirdID,
 head(offspring)
 tail(offspring)
 
-# Any missing years of genetic parents indicate the end of the pedigree.
-# i.e. at the time of writing (20160118) the pedigree goes to 2013, and
-# all offspring from 2014 and 2015 do not have genetic parents.
 
 summary(offspring)
-
+# fantastic
 
 # where parentage is missing for the genetic male or the social male,
 # we do not know whether an offspring is EPO or WPO. Therefore we 
@@ -461,8 +437,26 @@ length(offspring3[,1])
 # how many social fathers and genetic fathers are there?
 length(unique(offspring3$SocialDadID))
 length(unique(offspring3$GeneticDadID))
+
+  table(table(offspring3$GeneticDadID))
+  # there are 48 sires that appear only once.
 }
 
+# remove cases where genetic and social mother do not match
+{
+  which(offspring3$SocialMumID!=offspring3$GeneticMumID)
+  offspring3[which(offspring3$SocialMumID!=offspring3$GeneticMumID),]
+  
+  # the majority are single chicks in random broods, there is only one
+  # case of a mother where the whole brood is assigned to a sister.
+  
+  # remove
+  offspring4 <- offspring3[-which(offspring3$SocialMumID!=offspring3$GeneticMumID),]
+  
+  # check it makes sense:
+  which(offspring4$SocialMumID!=offspring4$GeneticMumID)
+  summary(offspring4)
+}
 #-------------------------------------------
 # Designate offspring as EPO or WPO
 #-------------------------------------------
@@ -470,17 +464,17 @@ length(unique(offspring3$GeneticDadID))
 # WPO have the same social and genetic sire,
 # EPO have different genetic and social sires.
 
-offspring3$WPO <- ifelse(offspring3$SocialDadID==offspring3$GeneticDadID,
+offspring4$WPO <- ifelse(offspring4$SocialDadID==offspring4$GeneticDadID,
                          1, 0)
-head(offspring3)
-tail(offspring3)
+head(offspring4)
+tail(offspring4)
 
-offspring3$EPO <- ifelse(offspring3$SocialDadID!=offspring3$GeneticDadID,
+offspring4$EPO <- ifelse(offspring4$SocialDadID!=offspring4$GeneticDadID,
                          1, 0)
 
-table(offspring3$EPO, offspring3$WPO)
+table(offspring4$EPO, offspring4$WPO)
 
-# 856 EPO. 4011 WPO. None identified as both. Good!
+# 1041 EPO. 4837 WPO. None identified as both. Good!
 }
 
 
@@ -500,14 +494,14 @@ table(offspring3$EPO, offspring3$WPO)
 
 {
   # make a list of unique males and count the number of WPO per male
-  malephenotypes <- aggregate(offspring3$WPO, 
-                              list(offspring3$GeneticDadID),
+  malephenotypes <- aggregate(offspring4$WPO, 
+                              list(offspring4$GeneticDadID),
                               FUN=sum)
   head(malephenotypes)
   
   # now the number of EPO per male
-  maleEPO <- aggregate(offspring3$EPO, 
-                       list(offspring3$GeneticDadID),
+  maleEPO <- aggregate(offspring4$EPO, 
+                       list(offspring4$GeneticDadID),
                        FUN=sum)
   head(maleEPO)
   
@@ -569,8 +563,8 @@ table(offspring3$EPO, offspring3$WPO)
   head(malephenotypes)
   
   # do a check
-  fixedsparrowped[which(fixedsparrowped$animal==500),]
-  malephenotypes[which(malephenotypes$animal==500),]
+  fixedsparrowped[which(fixedsparrowped$animal==971),]
+  malephenotypes[which(malephenotypes$animal==971),]
   
   # that is correct!
   
@@ -591,7 +585,7 @@ table(offspring3$EPO, offspring3$WPO)
   summary(malephenotypes)
   
   # check:
-  sparrowpedigree[which(sparrowpedigree$birdid==4722),]
+  sparrowpedigree[which(sparrowpedigree$id==4722),]
   malephenotypes[which(malephenotypes$animal==4722),]
   # good good.
 }
@@ -618,7 +612,7 @@ table(offspring3$EPO, offspring3$WPO)
   # alive will be defined as the last time seen in the GENETIC PEDIGREE.
   
   # so, find the maximum cohort for a given sire in the pedigree:
-  malelifespan <- aggregate(sparrowpedigree$CohortPedigree, 
+  malelifespan <- aggregate(sparrowpedigree$Cohort, 
                            list(sparrowpedigree$sire),
                            FUN=max)
   
@@ -635,7 +629,7 @@ table(offspring3$EPO, offspring3$WPO)
   malephenotypes$lifespanPED <- malephenotypes$lastyearPED - malephenotypes$Cohort
   summary(malephenotypes$lifespanPED)
   table(malephenotypes$lifespanPED)
-  # one male reproduced in year zero...
+  # great!
   
   # make spare age variable:
   malephenotypes$lifespanPED6 <- malephenotypes$lifespanPED
@@ -644,8 +638,6 @@ table(offspring3$EPO, offspring3$WPO)
   # >6 data points and replacing them with a 6:
   malephenotypes$lifespanPED6[which(malephenotypes$lifespanPED6>6)] <- 6
   
-  # and assign the zero year old to be one:
-  malephenotypes$lifespanPED6[which(malephenotypes$lifespanPED6==0)] <- 1
   
   # check
   summary(malephenotypes$lifespanPED6)
@@ -660,23 +652,23 @@ table(offspring3$EPO, offspring3$WPO)
 
 {
   # per year per GENETIC male identifier:
-  offspring3$maleyear <- paste(offspring3$GeneticDadID, offspring3$Cohort, sep=".")
+  offspring4$maleyear <- paste(offspring4$GeneticDadID, offspring4$Cohort, sep=".")
   
-  head(offspring3)
-  table(offspring3$maleyear)
-  table(table(offspring3$maleyear))
+  head(offspring4)
+  table(offspring4$maleyear)
+  table(table(offspring4$maleyear))
   # up to 25 offspring!
   
   
   # aggregate number of WPO per male
-  maleyearWPO <- aggregate(offspring3$WPO, 
-                           list(offspring3$maleyear),
+  maleyearWPO <- aggregate(offspring4$WPO, 
+                           list(offspring4$maleyear),
                            FUN=sum)
   head(maleyearWPO)
   
   # aggregate number of EPO per male
-  maleyearEPO <- aggregate(offspring3$EPO, 
-                           list(offspring3$maleyear),
+  maleyearEPO <- aggregate(offspring4$EPO, 
+                           list(offspring4$maleyear),
                            FUN=sum)
   head(maleyearEPO)
   
@@ -704,7 +696,7 @@ table(offspring3$EPO, offspring3$WPO)
   
   
   # add the male's ID:
-  maleyear$animal <- offspring3$GeneticDadID[match(maleyear$maleyear, offspring3$maleyear)]
+  maleyear$animal <- offspring4$GeneticDadID[match(maleyear$maleyear, offspring4$maleyear)]
   head(maleyear)
   
   # add male ID for repeated measures:
@@ -734,7 +726,7 @@ table(offspring3$EPO, offspring3$WPO)
   summary(maleyear)
   
   # check:
-  sparrowpedigree[which(sparrowpedigree$birdid==4722),]
+  sparrowpedigree[which(sparrowpedigree$id==4722),]
   maleyear[which(maleyear$animal==4722),]
   # good good.
 }
@@ -744,8 +736,8 @@ table(offspring3$EPO, offspring3$WPO)
   # year breeding occurred minus the cohort of the male.
   
   # add the year breeding occurred to the data set:
-  maleyear$year <- offspring3$Cohort[match(maleyear$maleyear, 
-                                           offspring3$maleyear)]
+  maleyear$year <- offspring4$Cohort[match(maleyear$maleyear, 
+                                           offspring4$maleyear)]
   
   head(maleyear)
   tail(maleyear)
@@ -763,8 +755,6 @@ table(offspring3$EPO, offspring3$WPO)
   maleyear$age6 <- maleyear$age
   maleyear$age6[which(maleyear$age6>6)] <- 6
   
-  # and the male reproducing in year zero is a database problem:
-  maleyear$age6[which(maleyear$age6==0)] <- 1
   
   table(maleyear$age)
   table(maleyear$age6)
@@ -863,7 +853,7 @@ table(offspring3$EPO, offspring3$WPO)
   # so 466 out of 703 were not cross-fostered. Might make disentangling these
   # two mothers challenging.
   
-  # replace the 466 NA social mothers with the genetic mother:
+  # replace the 570 NA social mothers with the genetic mother:
   
   for(i in 1:length(maleyear$SocialMumID)){
     if(is.na(maleyear$SocialMumID[i])){
@@ -902,24 +892,24 @@ table(offspring3$EPO, offspring3$WPO)
 # Aggregate WPO and EPO by GeneticMumID
 
 {
-  # for offspring3, are there any cases where the genetic mother is not known?
-  which(is.na(offspring3$GeneticMumID))
+  # for offspring4, are there any cases where the genetic mother is not known?
+  which(is.na(offspring4$GeneticMumID))
   # yes, which means these individuals need to be removed from making the 
   # dataset for females:
-  offspring4 <- offspring3[-which(is.na(offspring3$GeneticMumID)),]
+  offspring5 <- offspring4[-which(is.na(offspring4$GeneticMumID)),]
   
-  which(is.na(offspring4$GeneticMumID))
-  summary(offspring4)
+  which(is.na(offspring5$GeneticMumID))
+  summary(offspring5)
   
   # aggregate by GeneticMumID
-  femalephenotypes <- aggregate(offspring4$WPO, 
-                                list(offspring4$GeneticMumID),
+  femalephenotypes <- aggregate(offspring5$WPO, 
+                                list(offspring5$GeneticMumID),
                                 FUN=sum)
   head(femalephenotypes)
   
   
-  femaleEPO <- aggregate(offspring4$EPO, 
-                         list(offspring4$GeneticMumID),
+  femaleEPO <- aggregate(offspring5$EPO, 
+                         list(offspring5$GeneticMumID),
                          FUN=sum)
   head(femaleEPO)
   
@@ -981,6 +971,8 @@ table(offspring3$EPO, offspring3$WPO)
 
 {
   # Add the cohort of each female:
+  # I am consciously choosing the database cohort and not
+  # the pedigree cohort, since I know there are discrepancies.
   femalephenotypes$Cohort <- birdcohort$Cohort[match(femalephenotypes$animal,
                                                    birdcohort$BirdID)]
   
@@ -988,10 +980,12 @@ table(offspring3$EPO, offspring3$WPO)
   summary(femalephenotypes)
   
   # check:
-  sparrowpedigree[which(sparrowpedigree$birdid==7022),]
+  sparrowpedigree[which(sparrowpedigree$id==7022),]
+  fixedsparrowped[which(fixedsparrowped$animal==7022),]
   femalephenotypes[which(femalephenotypes$animal==7022),]
-  # that is interesting. The cohort of this one is not the same between
-  # the birdcohort file and the pedigree.
+  # that is interesting. This bird is in the fixed pedigree
+  # only and not the original pedigree. And, this bird used
+  # to have parents but does not any more.
 }
 
 {
@@ -1011,7 +1005,7 @@ table(offspring3$EPO, offspring3$WPO)
   # alive will be defined as the last time seen in the GENETIC PEDIGREE.
   
   # so, find the maximum cohort for a given dam in the pedigree:
-  femalelifespan <- aggregate(sparrowpedigree$CohortPedigree, 
+  femalelifespan <- aggregate(sparrowpedigree$Cohort, 
                             list(sparrowpedigree$dam),
                             FUN=max)
   
@@ -1045,16 +1039,9 @@ table(offspring3$EPO, offspring3$WPO)
 }
 
 # do broods have a single genetic mother?
-length(offspring4$GeneticMumID)
-table(offspring4$SocialMumID==offspring4$GeneticMumID)
-# so there are 15 cases where the genetic mother is not the social mother.
-# this could be a problem with either the pedigree or the database but I
-# am aware that the database being used for this analysis needs updating,
-# and that some social parents will be corrected as a result.
-
-offspring4[which((offspring4$SocialMumID==offspring4$GeneticMumID)==FALSE),]
-# The K, L, and M broods are from my years, where I am aware that changes are
-# needed.
+length(offspring5$GeneticMumID)
+table(offspring5$SocialMumID==offspring5$GeneticMumID)
+# there should not be since I removed them earlier now.
 
 #-------------------------------------------
 # Female dataset of genetic offspring per year
@@ -1063,23 +1050,23 @@ offspring4[which((offspring4$SocialMumID==offspring4$GeneticMumID)==FALSE),]
 
 {
   # per year per GENETIC female identifier:
-  offspring4$femaleyear <- paste(offspring4$GeneticMumID, offspring4$Cohort, sep=".")
+  offspring5$femaleyear <- paste(offspring5$GeneticMumID, offspring5$Cohort, sep=".")
   
-  head(offspring4)
-  table(offspring4$femaleyear)
-  table(table(offspring4$femaleyear))
+  head(offspring5)
+  table(offspring5$femaleyear)
+  table(table(offspring5$femaleyear))
   # up to 22 offspring this time.
   
   
   # aggregate number of WPO per female
-  femaleyearWPO <- aggregate(offspring4$WPO, 
-                           list(offspring4$femaleyear),
+  femaleyearWPO <- aggregate(offspring5$WPO, 
+                           list(offspring5$femaleyear),
                            FUN=sum)
   head(femaleyearWPO)
   
   # aggregate number of EPO per female
-  femaleyearEPO <- aggregate(offspring4$EPO, 
-                           list(offspring4$femaleyear),
+  femaleyearEPO <- aggregate(offspring5$EPO, 
+                           list(offspring5$femaleyear),
                            FUN=sum)
   head(femaleyearEPO)
   
@@ -1107,7 +1094,7 @@ offspring4[which((offspring4$SocialMumID==offspring4$GeneticMumID)==FALSE),]
   
   
   # add the female's ID:
-  femaleyear$animal <- offspring4$GeneticMumID[match(femaleyear$femaleyear, offspring4$femaleyear)]
+  femaleyear$animal <- offspring5$GeneticMumID[match(femaleyear$femaleyear, offspring5$femaleyear)]
   head(femaleyear)
   
   # add female ID for repeated measures:
@@ -1137,7 +1124,7 @@ offspring4[which((offspring4$SocialMumID==offspring4$GeneticMumID)==FALSE),]
   summary(femaleyear)
   
   # check:
-  sparrowpedigree[which(sparrowpedigree$birdid==76),]
+  sparrowpedigree[which(sparrowpedigree$id==76),]
   femaleyear[which(femaleyear$animal==76),]
   # good good.
 }
@@ -1147,8 +1134,8 @@ offspring4[which((offspring4$SocialMumID==offspring4$GeneticMumID)==FALSE),]
   # year breeding occurred minus the cohort of the female.
   
   # add the year breeding occurred to the data set:
-  femaleyear$year <- offspring4$Cohort[match(femaleyear$femaleyear, 
-                                             offspring4$femaleyear)]
+  femaleyear$year <- offspring5$Cohort[match(femaleyear$femaleyear, 
+                                             offspring5$femaleyear)]
   
   head(femaleyear)
   tail(femaleyear)
@@ -1192,12 +1179,12 @@ offspring4[which((offspring4$SocialMumID==offspring4$GeneticMumID)==FALSE),]
 {
   # per brood per female:
   
-  broodWPO <- aggregate(offspring4$WPO,
-                        list(offspring4$BroodName),
+  broodWPO <- aggregate(offspring5$WPO,
+                        list(offspring5$BroodName),
                         FUN=sum)
   
-  broodEPO <- aggregate(offspring4$EPO,
-                        list(offspring4$BroodName),
+  broodEPO <- aggregate(offspring5$EPO,
+                        list(offspring5$BroodName),
                         FUN=sum)
   
   summary(broodWPO)
@@ -1221,38 +1208,38 @@ offspring4[which((offspring4$SocialMumID==offspring4$GeneticMumID)==FALSE),]
   
   # how many are all EPO?
   table(broodWE$WPO)
-  # 63
+  # 74
   
   # add female ID
-  broodWE$MumID <- offspring4$GeneticMumID[match(broodWE$BroodName,
-                                                        offspring4$BroodName)]
+  broodWE$MumID <- offspring5$GeneticMumID[match(broodWE$BroodName,
+                                                        offspring5$BroodName)]
   
   length(unique(broodWE$MumID))
-  length(unique(offspring4$GeneticMumID))
+  length(unique(offspring5$GeneticMumID))
   # there are more mothers in the offspring data set than go in
   # the per brood data set. This is because there are a small
   # number of broods that have more than one genetic mother. For
   # example:
-  offspring4[which(offspring4$BroodName=="A008"),]
+  offspring5[which(offspring5$BroodName=="A008"),]
   broodWE[which(broodWE$BroodName=="A008"),]
   
   # add the female's social partner.
-  broodWE$DadID <- offspring4$SocialDadID[match(broodWE$BroodName,
-                                                        offspring4$BroodName)]
+  broodWE$DadID <- offspring5$SocialDadID[match(broodWE$BroodName,
+                                                        offspring5$BroodName)]
   
   # make a pair ID from the male and female's ID
   broodWE$pairID <- paste(broodWE$MumID, broodWE$DadID, sep="plus")
   
   # year of reproduction
-  broodWE$year <- offspring4$Cohort[match(broodWE$BroodName,
-                                          offspring4$BroodName)]
+  broodWE$year <- offspring5$Cohort[match(broodWE$BroodName,
+                                          offspring5$BroodName)]
   
   head(broodWE)
   
   
   # check that this is all matching the original data:
   broodWE[which(broodWE$BroodName=="J050"),]
-  offspring4[which(offspring4$BroodName=="J050"),]
+  offspring5[which(offspring5$BroodName=="J050"),]
 }
 
 {
@@ -1274,8 +1261,8 @@ offspring4[which((offspring4$SocialMumID==offspring4$GeneticMumID)==FALSE),]
   
   # check against original data:
   broodWE[which(broodWE$BroodName=="J050"),]
-  sparrowpedigree[which(sparrowpedigree$birdid==4037),]
-  sparrowpedigree[which(sparrowpedigree$birdid==4753),]
+  sparrowpedigree[which(sparrowpedigree$id==4037),]
+  sparrowpedigree[which(sparrowpedigree$id==4753),]
 }
 
 {
@@ -1349,8 +1336,6 @@ offspring4[which((offspring4$SocialMumID==offspring4$GeneticMumID)==FALSE),]
   broodWE$dadage6 <- broodWE$socdadage
   broodWE$dadage6[which(broodWE$dadage6>6)] <- 6
   
-  # make the zero a one:
-  broodWE$dadage6[which(broodWE$dadage6==0)] <- 1
   
   table(broodWE$dadage6)
 }
@@ -1361,6 +1346,14 @@ offspring4[which((offspring4$SocialMumID==offspring4$GeneticMumID)==FALSE),]
   broodWE$factorpairMaternal <- as.factor(broodWE$pairMaternal)
 }
 
+{
+  # exlcuding the missing maternal IDs might be important in this data set:
+  broodWE.fullmums1 <- broodWE[-which(is.na(broodWE$maternalID)),]
+  broodWE.fullmums <- broodWE.fullmums1[-which(is.na(broodWE.fullmums1$DadmaternalID)),]
+  
+  summary(broodWE.fullmums)
+  
+}
 
 ##############################################################################
 # combined phenotypes 
@@ -1395,8 +1388,8 @@ offspring4[which((offspring4$SocialMumID==offspring4$GeneticMumID)==FALSE),]
 
   head(f1)
   summary(f1)
-  # some missing mothers. One case of 10 EPO
-  f1[which(f1$EPOf==10),]
+  # some missing mothers. One case of 9 EPO
+  f1[which(f1$EPOf==9),]
   # how strange. I suspect the father is misidentified.
   offspring[which(offspring$SocialMumID==4972),]
   # This is weird. There is only one social father. But he only
@@ -1425,7 +1418,7 @@ offspring4[which((offspring4$SocialMumID==offspring4$GeneticMumID)==FALSE),]
   
   head(m1)
   summary(m1)
-  # 84 missing dams.
+  # 100 missing dams.
   str(m1)
 }
 
@@ -1444,10 +1437,10 @@ offspring4[which((offspring4$SocialMumID==offspring4$GeneticMumID)==FALSE),]
   # offspring behaviourally different?
   
   head(bothsexesyear)
-  head(offspring3)
+  head(offspring4)
   
-  bothsexesyear$EPOstatus <- offspring3$EPO[match(bothsexesyear$birdID,
-                                                  offspring3$BirdID)]
+  bothsexesyear$EPOstatus <- offspring4$EPO[match(bothsexesyear$birdID,
+                                                  offspring4$BirdID)]
   
   summary(bothsexesyear$EPOstatus)
   # quite a few missing...
@@ -1465,49 +1458,49 @@ offspring4[which((offspring4$SocialMumID==offspring4$GeneticMumID)==FALSE),]
 {
   # Add maternal ID of genetic mother and father
   
-  offspring4$GenDadMaternalID <- fixedsparrowped$dam[match(offspring4$GeneticDadID,
+  offspring5$GenDadMaternalID <- fixedsparrowped$dam[match(offspring5$GeneticDadID,
                                                            fixedsparrowped$animal)]
   
-  offspring4$GenMumMaternalID <- fixedsparrowped$dam[match(offspring4$GeneticMumID,
+  offspring5$GenMumMaternalID <- fixedsparrowped$dam[match(offspring5$GeneticMumID,
                                                            fixedsparrowped$animal)]
 }
 
 {
   # add male age. First, male cohort:
   
-  offspring4$GenDadCohort <- birdcohort$Cohort[match(offspring4$GeneticDadID,
+  offspring5$GenDadCohort <- birdcohort$Cohort[match(offspring5$GeneticDadID,
                                                      birdcohort$BirdID)]
   
-  head(offspring4)
+  head(offspring5)
   
   # age by subtracting Dad's cohort from offspring age:
-  offspring4$GenDadAge <- offspring4$Cohort - offspring4$GenDadCohort
+  offspring5$GenDadAge <- offspring5$Cohort - offspring5$GenDadCohort
   
-  table(offspring4$GenDadAge)
+  table(offspring5$GenDadAge)
   
   # correct father with age 0 to be age 1, and amalgamate age >=6
   
-  offspring4$GenDadAge6 <- offspring4$GenDadAge
-  offspring4$GenDadAge6[which(offspring4$GenDadAge6==0)] <- 1
-  offspring4$GenDadAge6[which(offspring4$GenDadAge6>6)] <- 6
+  offspring5$GenDadAge6 <- offspring5$GenDadAge
+  offspring5$GenDadAge6[which(offspring5$GenDadAge6==0)] <- 1
+  offspring5$GenDadAge6[which(offspring5$GenDadAge6>6)] <- 6
   
-  table(offspring4$GenDadAge6)
+  table(offspring5$GenDadAge6)
 }
 
 {
   # set factors
 
-  offspring4$factoryear <- as.factor(offspring4$Cohort)
-  offspring4$factorGenDadID <- as.factor(offspring4$GeneticDadID)
-  offspring4$factorGenDadanimal <- as.factor(offspring4$GeneticDadID)
-  offspring4$factorGenMumID <- as.factor(offspring4$GeneticMumID)
-  offspring4$factorGenMumanimal <- as.factor(offspring4$GeneticMumID)
-  offspring4$factorGenDadMaternalID <- as.factor(offspring4$GenDadMaternalID)
-  offspring4$factorGenMumMaternalID <- as.factor(offspring4$GenMumMaternalID)
-  offspring4$factorGenDadAge6 <- as.factor(offspring4$GenDadAge6)
+  offspring5$factoryear <- as.factor(offspring5$Cohort)
+  offspring5$factorGenDadID <- as.factor(offspring5$GeneticDadID)
+  offspring5$factorGenDadanimal <- as.factor(offspring5$GeneticDadID)
+  offspring5$factorGenMumID <- as.factor(offspring5$GeneticMumID)
+  offspring5$factorGenMumanimal <- as.factor(offspring5$GeneticMumID)
+  offspring5$factorGenDadMaternalID <- as.factor(offspring5$GenDadMaternalID)
+  offspring5$factorGenMumMaternalID <- as.factor(offspring5$GenMumMaternalID)
+  offspring5$factorGenDadAge6 <- as.factor(offspring5$GenDadAge6)
   
-  summary(offspring4)
-  str(offspring4)
+  summary(offspring5)
+  str(offspring5)
 }
 
 
@@ -1628,7 +1621,7 @@ offspring4[which((offspring4$SocialMumID==offspring4$GeneticMumID)==FALSE),]
 ##############################################################################
 {
 # how many EPO offspring do males have?
-hist(malephenotypes$EPO, breaks=seq(-1,26,1))
+hist(malephenotypes$EPO, breaks=seq(-1,35,1))
 # lots of zeroes.
 
 # how many are EPO?
@@ -1650,7 +1643,7 @@ hist(broodWE$EPO/(broodWE$EPO+broodWE$WPO))
 # many more zeros with the rest of the data more evenly spread.
 
 table(broodWE$EPO/(broodWE$EPO+broodWE$WPO))
-# 836 zero values.
+# 999 zero values. How ironic.
 }
 
 {
@@ -1681,32 +1674,32 @@ table(broodWE$EPO/(broodWE$EPO+broodWE$WPO))
   # many suspicious cases of males with all EPO.
   
   # add to the offspring data frame:
-  summary(offspring4)
+  summary(offspring5)
   
-  offspring4$femalephenotype <- femalephenotypes$EPO.WPO[match(offspring4$GeneticMumID,
+  offspring5$femalephenotype <- femalephenotypes$EPO.WPO[match(offspring5$GeneticMumID,
                                                                femalephenotypes$femaleID)]
   
-  offspring4$malephenotype <- malephenotypes$EPO.WPO[match(offspring4$GeneticDadID,
+  offspring5$malephenotype <- malephenotypes$EPO.WPO[match(offspring5$GeneticDadID,
                                                                malephenotypes$maleID)]
   
-  head(offspring4)
-  summary(offspring4)
+  head(offspring5)
+  summary(offspring5)
   
   # now plot phenotypes:
   
-  plot(offspring4$femalephenotype, offspring4$malephenotype)
-  cor(offspring4$femalephenotype, offspring4$malephenotype)
+  plot(offspring5$femalephenotype, offspring5$malephenotype)
+  cor(offspring5$femalephenotype, offspring5$malephenotype)
   
   # that actually looks good... This should work!
-  table(offspring4$femalephenotype, offspring4$malephenotype)[1,]
-  # there are 204 zero-zero values. Out of over 3k, that is
+  table(offspring5$femalephenotype, offspring5$malephenotype)[1,]
+  # there are 194 zero-zero values. Out of over 3k, that is
   # good.
 }
 
 # how many EPP per year?
 {
-  barplot(table(offspring4$EPO, offspring4$Cohort)[2,]/
-    (table(offspring4$EPO, offspring4$Cohort)[2,]+table(offspring4$EPO, offspring4$Cohort)[1,]),
+  barplot(table(offspring5$EPO, offspring5$Cohort)[2,]/
+    (table(offspring5$EPO, offspring5$Cohort)[2,]+table(offspring5$EPO, offspring5$Cohort)[1,]),
     ylim=c(0,0.3))
 }
 
@@ -3137,10 +3130,6 @@ table(broodWE$EPO/(broodWE$EPO+broodWE$WPO))
 # but a problem with this is the number of NA values for maternal
 # IDs.
 # one solution is to remove the NA values and try the model again:
-broodWE.fullmums1 <- broodWE[-which(is.na(broodWE$maternalID)),]
-broodWE.fullmums <- broodWE.fullmums1[-which(is.na(broodWE.fullmums1$DadmaternalID)),]
-
-summary(broodWE.fullmums)
 
 {
   broodEPO.maternal.paircov.mums <- MCMCglmm(cbind(EPO, WPO)~factor(dadage6),
@@ -3183,10 +3172,10 @@ summary(broodWE.fullmums)
   # something else is going on.
   
   # one problem could be my EPP rates.
-  table(offspring3$EPO)
+  table(offspring4$EPO)
   # 17% EPO. 
-  format(table(offspring3$EPO, offspring3$Cohort)[2,]/(table(offspring3$EPO, offspring3$Cohort)[1,]+
-                                                  table(offspring3$EPO, offspring3$Cohort)[2,]),digits=2)
+  format(table(offspring4$EPO, offspring4$Cohort)[2,]/(table(offspring4$EPO, offspring4$Cohort)[1,]+
+                                                  table(offspring4$EPO, offspring4$Cohort)[2,]),digits=2)
   
   # Per year rates vary from a low of 9% to a high of 24%.
   # Jane Reid has an average of 28% EPO (Reid et al 2014, Evolution)
@@ -3355,15 +3344,15 @@ broodEPO.nogenetics.pair <- MCMCglmm(cbind(EPO, WPO)~1,
 # 4   the maternal effect of the genetic mother and father and their covariance
 # 5   
 
-offspring4$combinedGrandmothers <- paste(offspring4$GenDadMaternalID,
-                                         offspring4$GenMumMaternalID,
+offspring5$combinedGrandmothers <- paste(offspring5$GenDadMaternalID,
+                                         offspring5$GenMumMaternalID,
                                          sep="plus")
 # now it is important to remove NA grandmothers:
 
-offspring4.minusGMums1 <- offspring4[-which(is.na(offspring4$GenDadMaternalID)),]
-offspring4.minusGMums <- offspring4.minusGMums1[-which(is.na(offspring4.minusGMums1$GenMumMaternalID)),]
+offspring5.minusGMums1 <- offspring5[-which(is.na(offspring5$GenDadMaternalID)),]
+offspring5.minusGMums <- offspring5.minusGMums1[-which(is.na(offspring5.minusGMums1$GenMumMaternalID)),]
 
-offspring4.minusGMums$factorGrandmothers <- as.factor(offspring4.minusGMums$combinedGrandmothers)
+offspring5.minusGMums$factorGrandmothers <- as.factor(offspring5.minusGMums$combinedGrandmothers)
 
 offspringEPO <- MCMCglmm(EPO~factor(GenDadAge6),
                            random=~str(factorGenDadanimal + factorGenMumanimal) + 
@@ -3374,7 +3363,7 @@ offspringEPO <- MCMCglmm(EPO~factor(GenDadAge6),
                            prior=priorbinomial7,
                            ginverse=list(factorGenDadanimal=invped.bothsexesyear,
                                          factorGenMumanimal=invped.bothsexesyear),
-                           data=offspring4.minusGMums,
+                           data=offspring5.minusGMums,
                            nitt=1000000,
                            thin=800,
                            burnin=200000)
@@ -3397,7 +3386,7 @@ offspringEPO.minusdadage <- MCMCglmm(EPO~1,
                          prior=priorbinomial7,
                          ginverse=list(factorGenDadanimal=invped.bothsexesyear,
                                        factorGenMumanimal=invped.bothsexesyear),
-                         data=offspring4.minusGMums,
+                         data=offspring5.minusGMums,
                          nitt=1000000,
                          thin=800,
                          burnin=200000)
@@ -3557,10 +3546,15 @@ posterior.mode(malerepeatability2)
 # Issues
 ##############################################################################
 
-# To sort in the new pedigree:
-# 1   broods that have more than one genetic mother
-# 2   male of age zero
-# 3   birds with a different cohort between the database and the pedigree.
+# To find solutions and information for:
+# 1   birds with a different cohort between the database and the pedigree.
+# 2   whether eggs are more likely to be assigned as extra-pair offspring.
+# 3   whether the results are stable when uncertain parents are removed.
+# 4   whether results are stable once Aaron has finished the database changes.
+# 5   genetic parents that are the wrong sex.
+# 6   social parents that are the wrong sex.
+# 7   dead genetic parents
+# 8 
 
 ##############################################################################
 # Close the database
