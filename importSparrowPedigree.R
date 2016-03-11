@@ -43,7 +43,7 @@
 ##############################################################################
 
 # read in the pedigree file:
-sparrowpedigree <- read.table("C:/Users/Issie/SkyDrive/PhD/masterdatasheets/Pedigreeto2015-20160201.txt",
+sparrowpedigree <- read.table("C:/Users/Issie/Dropbox/Sparrow Lundy/Pedigree/CurrentPedUpToIncl2015/PedigreeUpToIncl2015-versionwithNA.txt",
                    header=T, na.strings="NA")
 
 # Manual additions:
@@ -59,6 +59,7 @@ which(sparrowpedigree$id==7649)
 head(sparrowpedigree)
 tail(sparrowpedigree)
 str(sparrowpedigree)
+summary(sparrowpedigree)
 
 # are there any unusual cohorts:
 unique(sparrowpedigree$Cohort)
