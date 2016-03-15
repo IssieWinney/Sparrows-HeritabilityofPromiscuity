@@ -1597,6 +1597,12 @@ table(offspring5$SocialMumID==offspring5$GeneticMumID)
   pedStatSummary(pedigreeinformation)
 }
 
+#
+#
+#
+#
+#
+
 # and then the pedigrees can be converted to relationship matrices
 # for the current version of MCMCglmm:
 {
