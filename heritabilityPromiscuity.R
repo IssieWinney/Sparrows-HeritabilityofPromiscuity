@@ -2594,6 +2594,39 @@ table(broodWE$EPO/(broodWE$EPO+broodWE$WPO))
   # and the same with high autocorrelation here.
 }
 
+##########################################################################
+##########################################################################
+# At this point, I needed to install a new R version to do some
+# other work.
+# Here is the new session info that applies to models after this point:
+print(sessionInfo())
+
+R version 3.2.4 (2016-03-10)
+Platform: x86_64-w64-mingw32/x64 (64-bit)
+Running under: Windows >= 8 x64 (build 9200)
+
+locale:
+  [1] LC_COLLATE=English_United Kingdom.1252  LC_CTYPE=English_United Kingdom.1252   
+[3] LC_MONETARY=English_United Kingdom.1252 LC_NUMERIC=C                           
+[5] LC_TIME=English_United Kingdom.1252    
+
+attached base packages:
+  [1] grid      stats     graphics  grDevices utils     datasets  methods   base     
+
+other attached packages:
+  [1] knitr_1.12.3     RODBC_1.3-12     pedantics_1.5    MasterBayes_2.52 kinship2_1.6.4  
+[6] quadprog_1.5-5   genetics_1.3.8.1 mvtnorm_1.0-5    MASS_7.3-45      gtools_3.5.0    
+[11] gdata_2.17.0     combinat_0.0-8   MCMCglmm_2.22.1  ape_3.4          coda_0.18-1     
+[16] Matrix_1.2-4    
+
+loaded via a namespace (and not attached):
+  [1] lattice_0.20-33 corpcor_1.6.8   nlme_3.1-125    cubature_1.1-2  tools_3.2.4    
+[6] tensorA_0.36 
+
+##########################################################################
+##########################################################################
+
+
 {
   # with idh() variance structure:
   maleh2EPO.pois.byage.idh <- MCMCglmm(EPO~factor(age6),
@@ -2678,20 +2711,20 @@ table(broodWE$EPO/(broodWE$EPO+broodWE$WPO))
                            Mum1 = malephenotypes$maternalID)
   
   summary(motherhash)
-  # 38 NAs. Plenty to work on:
+  # 47 NAs. Plenty to work on:
   
   motherhash$Mum2 <- fixedsparrowped$dam[match(motherhash$Mum1,
                                                fixedsparrowped$animal)]
   
   summary(motherhash)
-  # 90
+  # 104
   
   
   motherhash$Mum3 <- fixedsparrowped$dam[match(motherhash$Mum2,
                                                fixedsparrowped$animal)]
   
   summary(motherhash)
-  # 144
+  # 154
   
   
   
@@ -2699,7 +2732,7 @@ table(broodWE$EPO/(broodWE$EPO+broodWE$WPO))
                                                fixedsparrowped$animal)]
   
   summary(motherhash)
-  # 200
+  # 198
   
   
   
@@ -2707,7 +2740,7 @@ table(broodWE$EPO/(broodWE$EPO+broodWE$WPO))
                                                fixedsparrowped$animal)]
   
   summary(motherhash)
-  # 246
+  # 250
   
   
   
@@ -2715,21 +2748,21 @@ table(broodWE$EPO/(broodWE$EPO+broodWE$WPO))
                                                fixedsparrowped$animal)]
   
   summary(motherhash)
-  # 266
+  # 278
   
   
   motherhash$Mum7 <- fixedsparrowped$dam[match(motherhash$Mum6,
                                                fixedsparrowped$animal)]
   
   summary(motherhash)
-  # 284
+  # 295
   
   
   motherhash$Mum8 <- fixedsparrowped$dam[match(motherhash$Mum7,
                                                fixedsparrowped$animal)]
   
   summary(motherhash)
-  # 316
+  # 321
   
   
   
@@ -2737,7 +2770,7 @@ table(broodWE$EPO/(broodWE$EPO+broodWE$WPO))
                                                fixedsparrowped$animal)]
   
   summary(motherhash)
-  # one mother left!
+  # 349
   
   
   motherhash$Mum10 <- fixedsparrowped$dam[match(motherhash$Mum9,
@@ -2745,24 +2778,40 @@ table(broodWE$EPO/(broodWE$EPO+broodWE$WPO))
   
   
   summary(motherhash)
-  
+  # 385
   
   motherhash$Mum11 <- fixedsparrowped$dam[match(motherhash$Mum10,
                                                 fixedsparrowped$animal)]
   
   
   summary(motherhash)
+  # just a couple more! 411 NAs!
   
-  # and it is done!
+  motherhash$Mum12 <- fixedsparrowped$dam[match(motherhash$Mum11,
+                                                fixedsparrowped$animal)]
+  
+  
+  summary(motherhash)
+  # last one!
+  
+  motherhash$Mum13 <- fixedsparrowped$dam[match(motherhash$Mum12,
+                                                fixedsparrowped$animal)]
+  
+  
+  summary(motherhash)
+  # done!
+  
   
   for(i in 1:length(motherhash[,1])){
   # look up which column in motherhash is the most left missing mother:
   j <- min(which(is.na(motherhash[i,])))
   
-  # if j == 2, this is the bird and there is no matriline. Return NA:
+  # if j == 2, this is the bird and there is no matriline. 
+  # What I did before is return NA here, but actually I can return the
+  # ID of the bird themselves.
   
   if(j == 2){
-    motherhash$matriline[i] <- "NA"
+    motherhash$matriline[i] <- motherhash$BirdID[i]
     motherhash$j[i] <- j
   } else {
   # one before this mother is the desired matriline mum:
@@ -2782,8 +2831,11 @@ table(broodWE$EPO/(broodWE$EPO+broodWE$WPO))
   length(unique(motherhash$matriline))
   head(motherhash)
   tail(motherhash)
+  motherhash$matrilinenumeric
   
-  # only 24 founding mothers!!!
+  
+  # 71 matrilines, that is an extra 45 compared to when I replaced
+  # birds with no matriline with 'NA'
   table(table(motherhash$matriline))
   
   # add to the maleyear data frame
