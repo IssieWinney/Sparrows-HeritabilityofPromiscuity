@@ -2867,6 +2867,10 @@ loaded via a namespace (and not attached):
 # Lifetime female behaviour as a multinomial variable
 #-------------------------------------------
 
+
+########## Run in R 3.0 ###########
+
+
 # with pedigree term, maternal ID, and female cohort
 {
   femaleh2EPO.multinomial.lifetime <- MCMCglmm(cbind(EPO, WPO)~1,
@@ -3130,6 +3134,8 @@ loaded via a namespace (and not attached):
 # Per brood female behaviour as a multinomial variable
 #-------------------------------------------
 
+
+
 # with this being per brood, can and should account for the social
 # male, his indirect genetic effect on the female, his phenotypic
 # effect on the female, the male's year, and the year of reproduction.
@@ -3188,6 +3194,9 @@ loaded via a namespace (and not attached):
 # but a problem with this is the number of NA values for maternal
 # IDs.
 # one solution is to remove the NA values and try the model again:
+
+
+########## From here onward, run in R 3.2.3 ##########
 
 {
   broodEPO.maternal.paircov.mums <- MCMCglmm(cbind(EPO, WPO)~factor(dadage6),
