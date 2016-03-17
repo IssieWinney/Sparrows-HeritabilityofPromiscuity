@@ -1879,12 +1879,18 @@ table(broodWE$EPO/(broodWE$EPO+broodWE$WPO))
                       burnin=200000)
 
   plot(maler2EPOmulti)
-  # low to no repeatability for the male multinomial behaviour.
-  # but this behaviour isn't well described by a multinomial
-  # distribution in males anyway.
+  # low repeatability for the male multinomial behaviour - poorly
+  # estimated maleID term. But more strongly estimated than in 2013
+  # data set.
+  # This behaviour isn't well described by a multinomial
+  # distribution in males anyway, since total reproduction varies between
+  # males.
   autocorr(maler2EPOmulti$Sol)
   autocorr(maler2EPOmulti$VCV)
   # Good.
+  
+  summary(maler2EPOmulti)
+  # good sampling.
 }
 
 {
@@ -1897,8 +1903,8 @@ table(broodWE$EPO/(broodWE$EPO+broodWE$WPO))
                         thin=800,
                         burnin=200000)
   plot(maler2EPOpois)
-  # This is repeatable. Not strongly, and there is a bit 
-  # of overlap with zero, but it is. Might improve if age
+  # This is repeatable. Better estimate than with 2013 data
+  # set (no overlap with zero). Might improve if age
   # is added since EP behaviour changes with age. Could also
   # be contingent on the year of measurement of behaviour,
   # so a model with maleID, year, and a fixed factor of male
@@ -1906,6 +1912,9 @@ table(broodWE$EPO/(broodWE$EPO+broodWE$WPO))
   autocorr(maler2EPOpois$Sol)
   autocorr(maler2EPOpois$VCV)
   # Below 0.1.
+  
+  summary(maler2EPOpois)
+  # Male ID term distinct from zero.
 }
 
 # male poisson with male age as fixed factor, and year of 
@@ -1920,10 +1929,13 @@ table(broodWE$EPO/(broodWE$EPO+broodWE$WPO))
                             thin=800,
                             burnin=200000)
   plot(maler2EPOpois.age.yr)
+  # older males have more EPO, which we knew already.
   # the repeatability per male is more clearly defined in this
   # case, now that the age of the male and the between-year
   # variation in the number of EPO is accounted for.
+  # year has a distinct peak, though overlaps zero
   autocorr(maler2EPOpois.age.yr$Sol)
+  # a couple of 0.08 autocorrelations
   autocorr(maler2EPOpois.age.yr$VCV)
   # 0.8 a bit high but they are all low ish.
 }
@@ -3563,6 +3575,27 @@ malerepeatability2 <- maler2EPOpois.minusfloaters$VCV[,"factormaleID"]/
      log(1/exp(maler2EPOpois.minusfloaters$Sol[,"(Intercept)"])+1))
 
 posterior.mode(malerepeatability2)
+
+# If we account for male age and year of reproduction, does repeatability go up or down?
+malerepeatability3 <- maler2EPOpois.age.yr$VCV[,"factormaleID"]/
+  (maler2EPOpois.age.yr$VCV[,"factormaleID"] +
+     maler2EPOpois.age.yr$VCV[,"units"] + maler2EPOpois.age.yr$VCV[,"factoryear"] +
+     log(1/exp(maler2EPOpois.age.yr$Sol[,"(Intercept)"])+1))
+posterior.mode(malerepeatability3)
+
+# But this has the interesting problem that repeatability is relative to the intercept
+# so this repeatability is relative to one year old males (which doesn't make
+# sense...). Our estimate of repeatability will change with age, e.g.:
+
+malerepeatability4 <- maler2EPOpois.age.yr$VCV[,"factormaleID"]/
+  (maler2EPOpois.age.yr$VCV[,"factormaleID"] +
+     maler2EPOpois.age.yr$VCV[,"units"] + maler2EPOpois.age.yr$VCV[,"factoryear"] +
+     log(1/exp(maler2EPOpois.age.yr$Sol[,"(Intercept)"] +
+                 maler2EPOpois.age.yr$Sol[,"factor(age6)2"])+1))
+posterior.mode(malerepeatability4)
+
+# would be the estimate for two year old males, except males are only sampled in
+# one year. Therefore, only the intercept-only repeatability makes sense to me...
 
 ##############################################################################
 # Additional consideration 5: are EPO offspring more likely to be promiscuous?
