@@ -2128,10 +2128,17 @@ table(broodWE$EPO/(broodWE$EPO+broodWE$WPO))
                                burnin=200000)
   
   plot(maleh2EPO.multinomial.lifetime)
-  # strong maternal ID effect, little animal and cohort effects
-  autocorr(maleh2EPO.multinomial.lifetime$Sol)
-  autocorr(maleh2EPO.multinomial.lifetime$VCV)
-  # animal:animal is a little high - this needs to be run for longer
+  # Animal term! Lifetime animal term! Strong animal term! Look at that.
+  # Cohort is also estimated, not much of a maternal effect going on.
+  # Only thing is, this is over the lifetime of the male. And is a 
+  # multinomial model, so males can have unlimited offspring of either
+  # EPO or WPO type.
+  # So his proportion of total offspring that are EPO is heritable.
+  # What is this behaviour? His total reproductive output.
+  # This suggests something is heritable. But what?
+  
+  checkAutocorr(maleh2EPO.multinomial.lifetime, 0.1)
+  summary(maleh2EPO.multinomial.lifetime)
 }
 
 # also accounting for male lifespan as a fixed factor between 1 and 6:
@@ -2147,16 +2154,36 @@ table(broodWE$EPO/(broodWE$EPO+broodWE$WPO))
                                              burnin=200000)
   
   plot(maleh2EPO.multinomial.lifetime.lifespan)
-  # clearer cohort effects. Suggestion that two and three year olds
-  # have fewer EPO than one year olds and one years are similar to 
-  # four and more year olds in proportion of EPO. Perhaps this is because
-  # Perhaps this is because we miss the WPO of some males and only detect
-  # their existence through EPO, so this multinomial approach is not
-  # ideal for males where WPO are not guaranteed.
+  # clear age effects.
+  # Still an animal term in this model. Where is it coming from?
+  # are there strong phenotype males driving this trend? Is it
+  # males with EPO or males without EPO?
   
-  autocorr(maleh2EPO.multinomial.lifetime.lifespan$Sol)
+  hist(malephenotypes$EPO/(malephenotypes$EPO+malephenotypes$WPO))
+  
+  checkAutocorr(maleh2EPO.multinomial.lifetime.lifespan, 0.1)
+  # one case of high autocorrelation. Not perfect.
+  
   autocorr(maleh2EPO.multinomial.lifetime.lifespan$VCV)
-  # autocorrelation good!
+  # again in a variable where the other autocorrelations are very
+  # small.
+  
+  summary(maleh2EPO.multinomial.lifetime.lifespan)
+  # This is in spite of good sampling throughout.
+  # Look at lifespan. The intercept, one year old males, is not
+  # fitting the pattern in the rest of the data. Is this because of
+  # males with one EPO and lifespan one?
+  
+  table((malephenotypes$EPO/(malephenotypes$EPO+malephenotypes$WPO)),
+        malephenotypes$lifespanPED6)
+  
+  # 54 males in their first year with only EPO (probably one).
+  # 95 with no EPO. But this is out of proportion compared to other
+  # lifespans (e.g. 8:32 for 2 year old males). The males for which we
+  # only know one EPO and no WPO, we might have missed their reproduction
+  # in the first year. Excluding these males is not perfect, but 
+  # might show whether they are skewing the heritability. See section on
+  # 'floaters'.
 }
 
 # additional consideration: whether incidental assortative mating by promiscuity
@@ -3659,6 +3686,44 @@ posterior.mode(malerepeatability4)
 
 # would be the estimate for two year old males, except males are only sampled in
 # one year. Therefore, only the intercept-only repeatability makes sense to me...
+
+
+## Do 'floater' type males skew the proportion of offspring that are
+# EPO in males analysis, leading to the animal term observed earlier?
+
+{
+  length(which(malephenotypes$WPO==0))
+  
+  malephenotypes.minusfloaters <- malephenotypes[-which(malephenotypes$WPO==0),]
+  
+  length(malephenotypes$maleID)
+  # Very respectable sample size
+  
+  length(malephenotypes.minusfloaters$maleID)
+  # medium ok.
+}
+
+{
+  maleh2EPO.multinomial.minusfloaters <- MCMCglmm(cbind(EPO, WPO)~1,
+                                           ~factoranimal + factormaternalID + factorcohort,
+                                           ginverse=list(factoranimal=invped.malelifetime),
+                                           prior=prior3G.p,
+                                           data=malephenotypes.minusfloaters,
+                                           family="multinomial2",
+                                           nitt=1000000,
+                                           thin=800,
+                                           burnin=200000)
+  
+  plot(maleh2EPO.multinomial.minusfloaters)
+  # hum yes. As I feared. The individual males are either providing the
+  # power for the animal term to be expressed, which is perfectly possible,
+  # or the individual males are creating an inherited phenotype that cannot
+  # be guaranteed to be present.
+  
+  summary(maleh2EPO.multinomial.minusfloaters)
+  # though note here animal term is present, largely overlapping with zero.
+}
+
 
 ##############################################################################
 # Additional consideration 5: are EPO offspring more likely to be promiscuous?
