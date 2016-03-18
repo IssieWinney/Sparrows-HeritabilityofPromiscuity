@@ -8,13 +8,16 @@
 rm(list=ls())
 
 ##############################################################################
-# loading necessary packages
+# loading necessary packages and functions
 ##############################################################################
 
 library(MCMCglmm)
 library(pedantics)
 library(RODBC)
 library(knitr)
+
+# function to check for autocorrelation in MCMCglmm models
+source("C:/Users/Issie/SkyDrive/RFunctions/MCMCglmm-checkAutocorr-20160317.R")
 
 ##############################################################################
 # what system, R, and package configurations am I using?
@@ -1887,7 +1890,10 @@ table(broodWE$EPO/(broodWE$EPO+broodWE$WPO))
   # males.
   autocorr(maler2EPOmulti$Sol)
   autocorr(maler2EPOmulti$VCV)
-  # Good.
+  # Good. But now I have written a function, I can check this:
+  checkAutocorr(maler2EPOmulti, 0.1)
+  checkAutocorr(maler2EPOmulti, 0.05)
+  # Great!
   
   summary(maler2EPOmulti)
   # good sampling.
@@ -1909,9 +1915,8 @@ table(broodWE$EPO/(broodWE$EPO+broodWE$WPO))
   # be contingent on the year of measurement of behaviour,
   # so a model with maleID, year, and a fixed factor of male
   # age would be good.
-  autocorr(maler2EPOpois$Sol)
-  autocorr(maler2EPOpois$VCV)
-  # Below 0.1.
+  checkAutocorr(maler2EPOpois, 0.1) # excellent
+  checkAutocorr(maler2EPOpois, 0.05) # one
   
   summary(maler2EPOpois)
   # Male ID term distinct from zero.
@@ -1934,10 +1939,12 @@ table(broodWE$EPO/(broodWE$EPO+broodWE$WPO))
   # case, now that the age of the male and the between-year
   # variation in the number of EPO is accounted for.
   # year has a distinct peak, though overlaps zero
-  autocorr(maler2EPOpois.age.yr$Sol)
-  # a couple of 0.08 autocorrelations
-  autocorr(maler2EPOpois.age.yr$VCV)
-  # 0.8 a bit high but they are all low ish.
+  checkAutocorr(maler2EPOpois.age.yr, 0.1) # excellent
+  checkAutocorr(maler2EPOpois.age.yr, 0.05)
+  # some moderate Sol autocorrelation due to factor(age)
+  
+  summary(maler2EPOpois.age.yr)
+  # a dip in sampling for two year old males.
 }
 
 {
@@ -1951,15 +1958,17 @@ table(broodWE$EPO/(broodWE$EPO+broodWE$WPO))
                             burnin=200000)
   plot(femaler2EPOmulti)
   # Nicely repeatable.
-  autocorr(femaler2EPOmulti$Sol)
-  autocorr(femaler2EPOmulti$VCV)
-  # Good mixing.
+  checkAutocorr(femaler2EPOmulti, 0.1)
+  checkAutocorr(femaler2EPOmulti, 0.05)
+  # great stuff!
+  
+  summary(femaler2EPOmulti)
 }
 
 # as with males, include extra factors, but this time to see
 # whether repeatability remains or is a result of these 
 # effects:
-# female multinomial with female age as fixed factor, and year:
+# female multinomial with female age as fixed factor, and year as random:
 {
   femaler2EPOmulti.age.yr <- MCMCglmm(cbind(EPO,WPO)~factor(age5),
                               ~factorfemaleID + factoryear,
@@ -1974,9 +1983,19 @@ table(broodWE$EPO/(broodWE$EPO+broodWE$WPO))
   # year of reproduction on this trait, suggesting the
   # trait is more likely to be a set promiscuity level
   # within each female (though not proof).
-  autocorr(femaler2EPOmulti.age.yr$Sol)
-  autocorr(femaler2EPOmulti.age.yr$VCV)
+  # Unlike in males, year is not contributing to this. It
+  # suggests this is a female trait, whereas the male trait
+  # requires facilitation.
+  checkAutocorr(femaler2EPOmulti.age.yr, 0.1)
+  checkAutocorr(femaler2EPOmulti.age.yr, 0.05)
   # fine
+  
+  summary(femaler2EPOmulti.age.yr)
+  # Though actually it looks like there is a dip in EPO 
+  # production in middle-aged females. Why? First thoughts
+  # are sampling bias: do we have more unhatched eggs for 
+  # some ages and more experienced females hatch more eggs
+  # so we have good sampling?
 }
 
 # but female age has virtually no effect --> just year:
@@ -1991,9 +2010,14 @@ table(broodWE$EPO/(broodWE$EPO+broodWE$WPO))
                                       burnin=200000)
   plot(femaler2EPOmulti.yr)
   # female repeatable here, no clear effect of year of reproduction.
-  autocorr(femaler2EPOmulti.yr$Sol)
-  autocorr(femaler2EPOmulti.yr$VCV)
+  # Really, age has as much reason to stay as year. i.e. none. Or maybe
+  # less since there is a slight dip with age.
+  checkAutocorr(femaler2EPOmulti.yr, 0.1)
+  checkAutocorr(femaler2EPOmulti.yr, 0.05)
   # fine.
+  
+  summary(femaler2EPOmulti.yr)
+  # very similar variance components to the previous model.
 }
 
 # as a per brood analysis for females:
@@ -2011,9 +2035,16 @@ table(broodWE$EPO/(broodWE$EPO+broodWE$WPO))
   # Variance values are double from before, but very similar
   # proportions. Females are repeatable between broods according
   # to this.
-  autocorr(femaler2EPObrood$Sol)
+  checkAutocorr(femaler2EPObrood,0.1)
+  # Oop. One high value
+  
   autocorr(femaler2EPObrood$VCV)
-  # good.
+  # Hum. All the other values are pretty low for that variable. 
+  # I will see whether the autocorrelation is low in the following
+  # models using the same data set.
+  
+  summary(femaler2EPObrood)
+  # sampling is good.
 }
 
 # as with males, include extra factors, but this time to see
@@ -2033,12 +2064,44 @@ table(broodWE$EPO/(broodWE$EPO+broodWE$WPO))
   # Small amount of the femaleID variance has been absorbed
   # in to year. Year is not a significant value but is not
   # zero. Female is clearly repeatable.
-  autocorr(femaler2EPObrood.yr$Sol)
-  autocorr(femaler2EPObrood.yr$VCV)
-  # fine
+  checkAutocorr(femaler2EPObrood.yr, 0.1)
+  # No autocorrelation here in the more complex model, so I
+  # guess the previous model has one high autocorrelation by
+  # chance.
+  
+  checkAutocorr(femaler2EPObrood.yr, 0.05)
+  
+  summary(femaler2EPObrood.yr)
+  # some loss of sampling for female ID. Potentially, this data
+  # is too zero-inflated for the model to handle well, and this
+  # inflates autocorrelation and reduces sampling.
 }
 
+# Since the year of breeding does not matter in females, but there
+# is good female repeatability, is it female quality that matters 
+# and would cohort be relevant?
 
+{
+  femaler2EPObrood.cohort <- MCMCglmm(cbind(EPO,WPO)~1,
+                                  ~factorfemaleID + factorcohort,
+                                  prior=prior2G.p,
+                                  data=broodWE,
+                                  family="multinomial2",
+                                  nitt=1000000,
+                                  thin=800,
+                                  burnin=200000)
+  
+  plot(femaler2EPObrood.cohort)
+  
+  # very similar to year, cohort is not explaining variance in this
+  # behaviour.
+  
+  checkAutocorr(femaler2EPObrood.cohort, 0.1)
+  # this is fine
+  
+  summary(femaler2EPObrood.cohort)
+  # and good sampling.
+}
 
 ##############################################################################
 # Heritability of male behaviour
