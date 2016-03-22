@@ -1891,7 +1891,7 @@ table(broodWE$EPO/(broodWE$EPO+broodWE$WPO))
   autocorr(maler2EPOmulti$Sol)
   autocorr(maler2EPOmulti$VCV)
   # Good. But now I have written a function, I can check this:
-  checkAutocorr(maler2EPOmulti, 0.1)
+  checkAutocorr(maler2EPOmulti)
   checkAutocorr(maler2EPOmulti, 0.05)
   # Great!
   
@@ -1915,7 +1915,7 @@ table(broodWE$EPO/(broodWE$EPO+broodWE$WPO))
   # be contingent on the year of measurement of behaviour,
   # so a model with maleID, year, and a fixed factor of male
   # age would be good.
-  checkAutocorr(maler2EPOpois, 0.1) # excellent
+  checkAutocorr(maler2EPOpois) # excellent
   checkAutocorr(maler2EPOpois, 0.05) # one
   
   summary(maler2EPOpois)
@@ -1939,7 +1939,7 @@ table(broodWE$EPO/(broodWE$EPO+broodWE$WPO))
   # case, now that the age of the male and the between-year
   # variation in the number of EPO is accounted for.
   # year has a distinct peak, though overlaps zero
-  checkAutocorr(maler2EPOpois.age.yr, 0.1) # excellent
+  checkAutocorr(maler2EPOpois.age.yr) # excellent
   checkAutocorr(maler2EPOpois.age.yr, 0.05)
   # some moderate Sol autocorrelation due to factor(age)
   
@@ -1958,7 +1958,7 @@ table(broodWE$EPO/(broodWE$EPO+broodWE$WPO))
                             burnin=200000)
   plot(femaler2EPOmulti)
   # Nicely repeatable.
-  checkAutocorr(femaler2EPOmulti, 0.1)
+  checkAutocorr(femaler2EPOmulti)
   checkAutocorr(femaler2EPOmulti, 0.05)
   # great stuff!
   
@@ -1986,7 +1986,7 @@ table(broodWE$EPO/(broodWE$EPO+broodWE$WPO))
   # Unlike in males, year is not contributing to this. It
   # suggests this is a female trait, whereas the male trait
   # requires facilitation.
-  checkAutocorr(femaler2EPOmulti.age.yr, 0.1)
+  checkAutocorr(femaler2EPOmulti.age.yr)
   checkAutocorr(femaler2EPOmulti.age.yr, 0.05)
   # fine
   
@@ -2012,7 +2012,7 @@ table(broodWE$EPO/(broodWE$EPO+broodWE$WPO))
   # female repeatable here, no clear effect of year of reproduction.
   # Really, age has as much reason to stay as year. i.e. none. Or maybe
   # less since there is a slight dip with age.
-  checkAutocorr(femaler2EPOmulti.yr, 0.1)
+  checkAutocorr(femaler2EPOmulti.yr)
   checkAutocorr(femaler2EPOmulti.yr, 0.05)
   # fine.
   
@@ -2064,7 +2064,7 @@ table(broodWE$EPO/(broodWE$EPO+broodWE$WPO))
   # Small amount of the femaleID variance has been absorbed
   # in to year. Year is not a significant value but is not
   # zero. Female is clearly repeatable.
-  checkAutocorr(femaler2EPObrood.yr, 0.1)
+  checkAutocorr(femaler2EPObrood.yr)
   # No autocorrelation here in the more complex model, so I
   # guess the previous model has one high autocorrelation by
   # chance.
@@ -2096,7 +2096,7 @@ table(broodWE$EPO/(broodWE$EPO+broodWE$WPO))
   # very similar to year, cohort is not explaining variance in this
   # behaviour.
   
-  checkAutocorr(femaler2EPObrood.cohort, 0.1)
+  checkAutocorr(femaler2EPObrood.cohort)
   # this is fine
   
   summary(femaler2EPObrood.cohort)
@@ -2137,7 +2137,7 @@ table(broodWE$EPO/(broodWE$EPO+broodWE$WPO))
   # What is this behaviour? His total reproductive output.
   # This suggests something is heritable. But what?
   
-  checkAutocorr(maleh2EPO.multinomial.lifetime, 0.1)
+  checkAutocorr(maleh2EPO.multinomial.lifetime)
   summary(maleh2EPO.multinomial.lifetime)
 }
 
@@ -2161,7 +2161,7 @@ table(broodWE$EPO/(broodWE$EPO+broodWE$WPO))
   
   hist(malephenotypes$EPO/(malephenotypes$EPO+malephenotypes$WPO))
   
-  checkAutocorr(maleh2EPO.multinomial.lifetime.lifespan, 0.1)
+  checkAutocorr(maleh2EPO.multinomial.lifetime.lifespan)
   # one case of high autocorrelation. Not perfect.
   
   autocorr(maleh2EPO.multinomial.lifetime.lifespan$VCV)
@@ -2203,12 +2203,12 @@ table(broodWE$EPO/(broodWE$EPO+broodWE$WPO))
                                              burnin=200000)
   
   plot(maleh2EPO.multinomial.lifetime.patID)
-  # with the addition of paternal ID, the maternal effect is much harder to 
-  # estimate and the paternal effect is of comparable size, so maybe it is
-  # an assortative mating thing. Cohort effects are clearer now.
-  autocorr(maleh2EPO.multinomial.lifetime.patID$Sol)
-  autocorr(maleh2EPO.multinomial.lifetime.patID$VCV)
-  # fine
+  # Animal and paternal here! Cohort as well. No maternal.
+  # So, in this full data set, 
+  checkAutocorr(maleh2EPO.multinomial.lifetime.patID)
+  # Good
+  
+  summary(maleh2EPO.multinomial.lifetime.patID)
 }
 
 # paternal ID and lifespan...
@@ -2229,11 +2229,10 @@ table(broodWE$EPO/(broodWE$EPO+broodWE$WPO))
                                              burnin=200000)
   
   plot(maleh2EPO.poisson.lifetime)
-  # much more consistently estimated maternal ID and cohort in this
-  # compared to the multinomial model
-  autocorr(maleh2EPO.poisson.lifetime$Sol)
-  autocorr(maleh2EPO.poisson.lifetime$VCV)
-  # all fine enough.
+  # maternal ID term. No animal term whatsoever. Strong cohort term.
+  checkAutocorr(maleh2EPO.poisson.lifetime)
+  summary(maleh2EPO.poisson.lifetime)
+  # sampling for maternal effect slightly below desired sampling.
 }
 
 # also accounting for male lifespan as a fixed factor between 1 and 6:
@@ -2249,12 +2248,16 @@ table(broodWE$EPO/(broodWE$EPO+broodWE$WPO))
                                          burnin=200000)
   
   plot(maleh2EPO.poisson.lifetime.lifespan)
-  # YES! See how now the distribution is a poisson and therefore unbounded by
-  # a male's WPO, the number of EPO increases in older males.
-  # As before, maternal effects are strongest in this model.
+  # The number of EPO increases in older males. This is what we should see
+  # according to previous work in this population.
+  # As before, maternal effects are strongest in this model. Cohort effects
+  # have dropped out, suggesting that there is an overlap between lifespan and
+  # cohort, which is true since the old males cannot be from a recent cohort.
+  table(malephenotypes$lifespanPED6, malephenotypes$Cohort)
+  # So this model is a correlation of EPO and lifespan, which is not informative.
   
-  autocorr(maleh2EPO.poisson.lifetime.lifespan$Sol)
-  autocorr(maleh2EPO.poisson.lifetime.lifespan$VCV)
+  checkAutocorr(maleh2EPO.poisson.lifetime.lifespan)
+  summary(maleh2EPO.poisson.lifetime.lifespan)
   # looks good.
 }
 
@@ -2273,10 +2276,11 @@ table(broodWE$EPO/(broodWE$EPO+broodWE$WPO))
                                          burnin=200000)
   
   plot(maleh2EPO.poisson.lifetime.patID)
-  # now, no paternal variance estimated. Maternal and cohort stay strong.
-  autocorr(maleh2EPO.poisson.lifetime.patID$Sol)
-  autocorr(maleh2EPO.poisson.lifetime.patID$VCV)
-  # again, good sampling.
+  # Unlike in the multinomial models, no paternal variance estimated. 
+  # Maternal and cohort stay strong.
+  checkAutocorr(maleh2EPO.poisson.lifetime.patID)
+  summary(maleh2EPO.poisson.lifetime.patID)
+  # again, good sampling. Slight dip for mother.
 }
 
 # and paternal ID with lifespan:
@@ -2294,10 +2298,10 @@ table(broodWE$EPO/(broodWE$EPO+broodWE$WPO))
   
   plot(maleh2EPO.poisson.lifetime.lifespan.patID)
   # again, maternal ID matters out of all these random effects.
-  # EPO goes up with lifespan.
-  autocorr(maleh2EPO.poisson.lifetime.lifespan.patID$Sol)
-  autocorr(maleh2EPO.poisson.lifetime.lifespan.patID$VCV)
-  # fine
+  # EPO goes up with lifespan. Lifespan trumps cohort.
+  checkAutocorr(maleh2EPO.poisson.lifetime.lifespan.patID)
+  summary(maleh2EPO.poisson.lifetime.lifespan.patID)
+  # a couple of sampling dips in this model: lifespan and cohort.
 }
 
 # problems with these models: males that are older can contribute more
@@ -2321,10 +2325,12 @@ table(broodWE$EPO/(broodWE$EPO+broodWE$WPO))
                                  thin=800,
                                  burnin=200000)
   plot(maleh2EPO.multi.yr)
-  # This one struggles to estimate anything.
-  autocorr(maleh2EPO.multi.yr$Sol)
-  autocorr(maleh2EPO.multi.yr$VCV)
-  # and not because there is autocorrelation
+  # Animal! Animal! Suggestion of maternal but not strong enough.
+  # Cohort is best estimated factor.
+  checkAutocorr(maleh2EPO.multi.yr)
+  summary(maleh2EPO.multi.yr)
+  # though with the size of units, the proportion of variance cannot
+  # be high.
 }
 
 # with age as a fixed factor between 1 and 6
@@ -2340,10 +2346,16 @@ table(broodWE$EPO/(broodWE$EPO+broodWE$WPO))
                                  thin=800,
                                  burnin=200000)
   plot(maleh2EPO.multi.yr.age)
+  # Increasing proportion of offspring are EPO with increasing age.
+  # And the animal term suggestion is present again.
+  # Still can't say whether this is because of the floater males or 
+  # power or what. Very frustrating.
+  # In this model, cohort is distinct from age, unlike in the lifetime
+  # models. Very curious.
   # Once age is accounted for, there is a clear cohort effect but not much more.
-  autocorr(maleh2EPO.multi.yr.age$Sol)
-  autocorr(maleh2EPO.multi.yr.age$VCV)
-  # That will do
+  checkAutocorr(maleh2EPO.multi.yr.age)
+  summary(maleh2EPO.multi.yr.age)
+  # Hum hum hum. Much to think about this weekend.
 }
 
 # with paternalID
@@ -2360,10 +2372,12 @@ table(broodWE$EPO/(broodWE$EPO+broodWE$WPO))
                                          thin=800,
                                          burnin=200000)
   plot(maleh2EPO.multi.yr.pat)
-  # even less going on than before (though no male age in this model)
-  autocorr(maleh2EPO.multi.yr.pat$Sol)
-  autocorr(maleh2EPO.multi.yr.pat$VCV)
-  # This looks fine but I think the chain behaviour is a little wobbly
+  # how weird. The model is obviously over-specified, but the paternal
+  # effect in this model seems to be stronger than the animal term
+  # was before. Cohort is the only distinct peak.
+  checkAutocorr(maleh2EPO.multi.yr.pat)
+  summary(maleh2EPO.multi.yr.pat)
+  # considering units, any other effect sizes are tiny.
 }
 
 # with paternalID and age
@@ -2380,9 +2394,8 @@ table(broodWE$EPO/(broodWE$EPO+broodWE$WPO))
                                      thin=800,
                                      burnin=200000)
   plot(maleh2EPO.multi.yr.pat.age)
-  # Hum! A small amount of variance to the paternal ID here where before there
-  # was none! Cohort is stronger. No effect is significant. So this means the
-  # maternal effect on this trait breaks down / is harder to quantify in this data.
+  # Now the paternal effect is clearly estimated. So! The proportion of 
+  # offspring that are EPO depends on the father. This also isn't
   autocorr(maleh2EPO.multi.yr.pat.age$Sol)
   autocorr(maleh2EPO.multi.yr.pat.age$VCV)
   # good.
@@ -3722,6 +3735,29 @@ posterior.mode(malerepeatability4)
   
   summary(maleh2EPO.multinomial.minusfloaters)
   # though note here animal term is present, largely overlapping with zero.
+}
+
+# in the original models, the paternal ID is estimated and not the
+# maternal ID. So with this data set, minus those one-hit wonders,
+# does paternal ID matter? Knock out the animal term to give the 
+# model more power and speed.
+{
+  maler2EPO.multinomial.minusfloaters.dad <- MCMCglmm(cbind(EPO, WPO)~1,
+                                                  ~factorpaternalID + factormaternalID +
+                                                    factorcohort,
+                                                  prior=prior3G.p,
+                                                  data=malephenotypes.minusfloaters,
+                                                  family="multinomial2",
+                                                  nitt=1000000,
+                                                  thin=800,
+                                                  burnin=200000)
+  plot(maler2EPO.multinomial.minusfloaters.dad)
+  # No. Ok. Now in this data set, the maternal effect is the one that
+  # stays, as in the poisson distributed data set, and there is no
+  # paternal effect, strongly suggesting that the animal term and the
+  # paternal effect comes from the males where we did not know their
+  # breeding success at home. Or the very few that are the brothers of
+  # real fathers.
 }
 
 
