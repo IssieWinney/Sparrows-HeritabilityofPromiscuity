@@ -904,6 +904,13 @@ table(offspring4$EPO, offspring4$WPO)
   which(is.na(offspring5$GeneticMumID))
   summary(offspring5)
   
+  
+  
+  # how many social and genetic mothers are there?
+  length(unique(offspring5$SocialMumID))
+  length(unique(offspring5$GeneticMumID))
+  
+  
   # aggregate by GeneticMumID
   femalephenotypes <- aggregate(offspring5$WPO, 
                                 list(offspring5$GeneticMumID),
@@ -1710,6 +1717,11 @@ table(broodWE$EPO/(broodWE$EPO+broodWE$WPO))
   barplot(table(offspring5$EPO, offspring5$Cohort)[2,]/
     (table(offspring5$EPO, offspring5$Cohort)[2,]+table(offspring5$EPO, offspring5$Cohort)[1,]),
     ylim=c(0,0.3))
+  
+  # leading to the summary:
+  table(offspring5$EPO, offspring5$Cohort)[2,]/
+    (table(offspring5$EPO, offspring5$Cohort)[2,]+table(offspring5$EPO, offspring5$Cohort)[1,])
+  # minimum 0.09, maximum 0.24, mean 0.17
 }
 
 
@@ -2396,9 +2408,13 @@ table(broodWE$EPO/(broodWE$EPO+broodWE$WPO))
   plot(maleh2EPO.multi.yr.pat.age)
   # Now the paternal effect is clearly estimated. So! The proportion of 
   # offspring that are EPO depends on the father. This also isn't
-  autocorr(maleh2EPO.multi.yr.pat.age$Sol)
-  autocorr(maleh2EPO.multi.yr.pat.age$VCV)
+  checkAutocorr(maleh2EPO.multi.yr.pat.age)
+  summary(maleh2EPO.multi.yr.pat.age)
   # good.
+  
+  # so, go to the section about 'floater' males to see what I
+  # have found out there. Basically, I am not convinced by the paternal
+  # effects or the animal terms in these models.
 }
 
 # with year of breeding as a random effect, paternal ID, and age
@@ -2415,13 +2431,8 @@ table(broodWE$EPO/(broodWE$EPO+broodWE$WPO))
                                          thin=800,
                                          burnin=200000)
   plot(maleh2EPO.multi.yr.pat.age.year)
-  # Most things show nothing. Something loaded on paternal ID but not enough
-  # to separate. Cohort easier to separate, still not easily distinguished
-  # effect
-  autocorr(maleh2EPO.multi.yr.pat.age.year$Sol)
-  autocorr(maleh2EPO.multi.yr.pat.age.year$VCV)
-  # factoryear:factoryear, -0.985 not ideal. I think the model is too
-  # much for the data.
+  checkAutocorr(maleh2EPO.multi.yr.pat.age.year)
+  summary(maleh2EPO.multi.yr.pat.age.year)
 }
 
 #-------------------------------------------
@@ -2444,9 +2455,10 @@ table(broodWE$EPO/(broodWE$EPO+broodWE$WPO))
   plot(maleh2EPO.pois.yr)
   # as before, maternal ID is estimated where the other factors, including
   # cohort, are not.
-  autocorr(maleh2EPO.pois.yr$Sol)
-  autocorr(maleh2EPO.pois.yr$VCV)
-  # fine.
+  checkAutocorr(maleh2EPO.pois.yr)
+  summary(maleh2EPO.pois.yr)
+  # fine, some loss of sampling from intercept. The maternal effect is the
+  # main effect, which was the case in the data set up to 2013 as well.
 }
 
 # with age as a fixed factor between 1 and 6
@@ -2462,11 +2474,12 @@ table(broodWE$EPO/(broodWE$EPO+broodWE$WPO))
                                      thin=800,
                                      burnin=200000)
   plot(maleh2EPO.pois.yr.age)
-  # again, age important but out of the random effects only mother is 
-  # strong.
-  autocorr(maleh2EPO.pois.yr.age$Sol)
-  autocorr(maleh2EPO.pois.yr.age$VCV)
-  # units:animal has a strong one. Should run for longer. Might be random.
+  # Age has a clear positive effect: older males have a higher number of EPO.
+  # The maternal effect is the main effect in the random effects, I am interested
+  # in whether the year of breeding influences this or not.
+  checkAutocorr(maleh2EPO.pois.yr.age)
+  # one autocorrelation value is high
+  summary(maleh2EPO.pois.yr.age)
 }
 
 # with paternalID
@@ -2483,10 +2496,9 @@ table(broodWE$EPO/(broodWE$EPO+broodWE$WPO))
                                     thin=800,
                                     burnin=200000)
   plot(maleh2EPO.pois.yr.pat)
-  # maternal ID the best estimated random effect, no other random 
-  # effects estimated.
-  autocorr(maleh2EPO.pois.yr.pat$Sol)
-  autocorr(maleh2EPO.pois.yr.pat$VCV)
+  # small bump for maleID and paternal ID
+  checkAutocorr(maleh2EPO.pois.yr.pat)
+  summary(maleh2EPO.pois.yr.pat)
   # all good.
 }
 
@@ -2504,12 +2516,11 @@ table(broodWE$EPO/(broodWE$EPO+broodWE$WPO))
                                         thin=800,
                                         burnin=200000)
   plot(maleh2EPO.pois.yr.age.pat)
-  # the expected effects of increased EPO with age, as before the
-  # only random effect is maternal. Not great estimation, plenty of
-  # overlap with zero.
-  autocorr(maleh2EPO.pois.yr.age.pat$Sol)
-  autocorr(maleh2EPO.pois.yr.age.pat$VCV)
-  # fine.
+  # Bumps with maternal and paternal but nothing strong.
+  checkAutocorr(maleh2EPO.pois.yr.age.pat)
+  summary(maleh2EPO.pois.yr.age.pat)
+  posterior.mode(maleh2EPO.pois.yr.age.pat$VCV)
+  # Cohort doesn't help these models: it is hugging zero.
 }
 
 # with year of breeding as a random effect, paternal ID, and age
@@ -2527,13 +2538,13 @@ table(broodWE$EPO/(broodWE$EPO+broodWE$WPO))
                                         burnin=200000)
   
   plot(maleh2EPO.pois.yr.age.pat.year)
-  # maybe it is just going too far with the available data. Only
-  # a maternal effect here as well. It might be that it is only
-  # possible to present a full model in a supplement since the 
-  # random effect estimations are weak.
-  autocorr(maleh2EPO.pois.yr.age.pat.year$Sol)
-  autocorr(maleh2EPO.pois.yr.age.pat.year$VCV)
-  # as previously, all pass the test of being below 0.1.
+  # maybe it is just going too far with the available data.
+  # factoryear was estimated well.
+  checkAutocorr(maleh2EPO.pois.yr.age.pat.year)
+  summary(maleh2EPO.pois.yr.age.pat.year)
+  # weird that the paternal effect is higher in these models
+  # and the maternal effect is weaker than before. Is this
+  # like the multinomial case?
 }
 
 # since very low signal, suggestive of overspecified model.
@@ -2552,8 +2563,8 @@ table(broodWE$EPO/(broodWE$EPO+broodWE$WPO))
                                 burnin=200000)
   plot(maleh2EPO.pois.yr.mincohort)
   # maternal ID strongest as before.
-  autocorr(maleh2EPO.pois.yr.mincohort$Sol)
-  autocorr(maleh2EPO.pois.yr.mincohort$VCV)
+  checkAutocorr(maleh2EPO.pois.yr.mincohort)
+  summary(maleh2EPO.pois.yr.mincohort)
   # fine
 }
 
@@ -2570,13 +2581,31 @@ table(broodWE$EPO/(broodWE$EPO+broodWE$WPO))
                                           nitt=1000000,
                                           thin=800,
                                           burnin=200000)
-  plot(maleh2EPO.pois.yr.mincohort.year.age)
+    plot(maleh2EPO.pois.yr.mincohort.year.age)
   # still strongest maternal ID.
-  autocorr(maleh2EPO.pois.yr.mincohort.year.age$Sol)
-  autocorr(maleh2EPO.pois.yr.mincohort.year.age$VCV)
-  # some 0.8 autocorrelations.
+  checkAutocorr(maleh2EPO.pois.yr.mincohort.year.age)
+  summary(maleh2EPO.pois.yr.mincohort.year.age)
 }
 
+# now I'd like to add paternal ID without the cohort:
+{
+  maleh2EPO.pois.mincohort.pat <- MCMCglmm(EPO~factor(age6),
+                                           ~factoranimal + factormaleID +
+                                             factormaternalID + factorpaternalID +
+                                             factoryear,
+                                           ginverse=list(factoranimal=invped.malelifetime),
+                                           prior=prior5G.p,
+                                           data=maleyear,
+                                           family="poisson",
+                                           nitt=1000000,
+                                           thin=800,
+                                           burnin=200000)
+  plot(maleh2EPO.pois.mincohort.pat)
+  # the suggestion here is that the paternal ID effect
+  # is overlapping with the maternal ID effect. So is
+  # this real? Go back to the analysis without these one-
+  # hit-wonder males...
+}
 
 #-------------------------------------------
 # Per year male poisson - does promiscuity have penetrance?
@@ -3393,9 +3422,9 @@ broodEPO.nogenetics.pair.dad <- MCMCglmm(cbind(EPO, WPO)~1,
                                 ginverse=list(factoranimal=invped.bothsexes.fullmums,
                                               factordadanimal=invped.bothsexes.fullmums),
                                 data=broodWE.fullmums,
-                                nitt=1000000,
-                                thin=800,
-                                burnin=200000)
+                                nitt=100000,
+                                thin=80,
+                                burnin=20000)
 
 plot(broodEPO.nogenetics.pair.dad)
 
@@ -3476,9 +3505,9 @@ broodEPO.nogenetics.pair <- MCMCglmm(cbind(EPO, WPO)~1,
                             prior=priorbiv4.p,
                             ginverse=list(animal=invped.bothsexesyear),
                             data=bothsexesyear,
-                            nitt=1000000,
-                            thin=800,
-                            burnin=200000)
+                            nitt=100000,
+                            thin=80,
+                            burnin=20000)
   # bear in mind, for interpretation the female intercept is 
   # at the reference level of age==1. But the male has a separate
   # intercept. Age is not interacted with trait, and there is
@@ -3649,6 +3678,12 @@ length(which(maleyear$WPO==0))
 
 maleyear.minusfloaters <- maleyear[-which(maleyear$WPO==0),]
 
+table(maleyear$age6, maleyear$EPO)
+table(maleyear.minusfloaters$age6, maleyear.minusfloaters$EPO)
+# so who was cut? Predominantly males with one EPO, leaving more
+# males with zero EPO at all ages. Also a large number of one-year-olds
+# in general.
+
 table(table(maleyear$maleid))
 
 maler2EPOpois.minusfloaters <- MCMCglmm(EPO~1,
@@ -3758,6 +3793,35 @@ posterior.mode(malerepeatability4)
   # paternal effect comes from the males where we did not know their
   # breeding success at home. Or the very few that are the brothers of
   # real fathers.
+}
+
+{
+  # encountering the same conundrum with the poisson variable - is
+  # it a maternal effect or a paternal effect?
+  maleh2EPO.pois.minfloaters.pat <- MCMCglmm(EPO~factor(age6),
+                                           ~factoranimal + factormaleID +
+                                             factormaternalID + factorpaternalID +
+                                             factoryear,
+                                           ginverse=list(factoranimal=invped.malelifetime),
+                                           prior=prior5G.p,
+                                           data=maleyear.minusfloaters,
+                                           family="poisson",
+                                           nitt=1000000,
+                                           thin=800,
+                                           burnin=200000)
+  
+  plot(maleh2EPO.pois.minfloaters.pat)
+  # the effects of age are actually a lot higher without the 'floater'
+  # males, which is weird. I would expect the effect sizes of age to
+  # be less extreme.
+  # No clear distinction between the maternal and the paternal effect
+  # in this model. It seems the two are in competition.
+}
+
+{
+  # potentially, overfitting is an issue again, so I can remove
+  # the animal term as well to provide as much power as possible
+  # to distinguish the maternal and paternal effects
 }
 
 
